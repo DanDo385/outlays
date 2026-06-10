@@ -30,7 +30,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
   - ACCEPT: integration test ingests the S3 output on compose; UPDATE/DELETE raises on every
     data table; a correction row chains via `supersedes`.
 
-- [ ] **S5 — Orchestrator.** `core/cmd/orchestrator run --adapter <path> --year <Y>`: exec
+- [x] **S5 — Orchestrator.** `core/cmd/orchestrator run --adapter <path> --year <Y>`: exec
     per protocol, validate envelope + facts, persist, mark run status. errgroup concurrency;
     rate limit + backoff + project UA.
   - ACCEPT: one command ingests CA 2024-25 into a fresh stack; forced-failure and

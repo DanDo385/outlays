@@ -226,6 +226,20 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
 - **D13 — `SchemeId` is a closed enum in the contract.** Mirrors the DB FK to
   `classification_scheme`; an unknown scheme fails pure schema validation. Adding a per-source
   scheme is a deliberate contract change + regen, not a runtime free-for-all. (S1)
+- **D22 — Orchestrator verifies by re-derivation before persisting.** After running an adapter
+  (`info` → `fetch`), the orchestrator validates the output against the `AdapterOutput` schema
+  **and** recomputes `resultHash` from the facts (shared `verify` package), refusing to persist
+  on mismatch. Adapter exit codes map to recorded `failed` runs: 2 = source unavailable, 3 =
+  contract-invalid, other = unexpected. Every attempt yields exactly one append-only
+  `ingestion_run` row (succeeded via the ingest tx, or a standalone failed row). Multi-year
+  backfill uses a bounded errgroup; a per-year failure does not abort siblings. The project
+  User-Agent is projected to the adapter subprocess; per-host rate limiting + backoff live in
+  the SDK fetch layer (per-process — concurrent years relax the global per-host budget, a known
+  trade-off bounded by `--concurrency`). (S5)
+- **D23 — DB integration tests behind a build tag.** `store` and `ingest` integration tests
+  reset the schema (`DROP SCHEMA … CASCADE`, since append-only blocks TRUNCATE) and share one
+  Postgres, so they carry `//go:build integration` and run serially (`go test -tags integration
+  -p 1`). Plain `go test ./...` stays fast, infra-free, and parallel-safe. (S5)
 - **D20 — Append-only enforced on all ten data tables.** A `reject_mutation()` trigger fires
   `BEFORE UPDATE OR DELETE` on every table; `app_rw` additionally has `UPDATE`/`DELETE`/
   `TRUNCATE` revoked. `ingestion_run` is therefore written **once at run end** (status

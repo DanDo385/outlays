@@ -16,9 +16,8 @@ import (
 	"sort"
 	"strings"
 
-	"github.com/cyberphone/json-canonicalization/go/src/webpki.org/jsoncanonicalizer"
-
 	"github.com/djmagro/outlays/core/internal/contract"
+	"github.com/djmagro/outlays/core/internal/verify"
 	"github.com/santhosh-tekuri/jsonschema/v6"
 )
 
@@ -28,9 +27,6 @@ var manifestRequired = []string{
 	"adapterId", "jurisdiction", "datasets", "adapterVersion",
 	"contractVersion", "license", "maintainer",
 }
-
-// Volatile fact fields excluded from the resultHash recomputation. MUST match the SDKs.
-var volatileFactFields = []string{"factId", "runId", "insertedAt"}
 
 // Result is the outcome of a conformance run.
 type Result struct {
@@ -184,7 +180,7 @@ func fetchRun(adapterCmd []string, year, dir string, res *Result, label string) 
 		checkDeclaredSnapshots(rawDir, snapshotShas(doc.Envelope.RawSnapshots)), "")
 
 	// resultHash recompute.
-	recomputed, err := recomputeResultHash(doc.Facts)
+	recomputed, err := verify.RecomputeResultHash(doc.Facts)
 	if err != nil {
 		res.add(label+": recompute resultHash", false, err.Error())
 		return doc.Envelope.ResultHash, nil
@@ -204,35 +200,6 @@ func snapshotShas(snaps []struct {
 		out[i] = s.Sha256
 	}
 	return out
-}
-
-// recomputeResultHash mirrors the SDKs: drop volatile fields, sort by factHash, JCS, SHA-256.
-func recomputeResultHash(facts []json.RawMessage) (string, error) {
-	type factMap map[string]json.RawMessage
-	parsed := make([]factMap, 0, len(facts))
-	for _, raw := range facts {
-		var m factMap
-		if err := json.Unmarshal(raw, &m); err != nil {
-			return "", err
-		}
-		for _, k := range volatileFactFields {
-			delete(m, k)
-		}
-		parsed = append(parsed, m)
-	}
-	sort.Slice(parsed, func(i, j int) bool {
-		return string(parsed[i]["factHash"]) < string(parsed[j]["factHash"])
-	})
-	arr, err := json.Marshal(parsed)
-	if err != nil {
-		return "", err
-	}
-	canon, err := jsoncanonicalizer.Transform(arr)
-	if err != nil {
-		return "", err
-	}
-	sum := sha256.Sum256(canon)
-	return hex.EncodeToString(sum[:]), nil
 }
 
 func checkRawFiles(rawDir string) bool {

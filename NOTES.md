@@ -129,3 +129,24 @@ the bottom.
   output (989 facts / 442 entities / 448 aliases / 1978 assignments / 1 snapshot), asserts
   UPDATE+DELETE raise on every table, the app REVOKE blocks UPDATE, the object key exists, and
   a `supersedes` correction chains. Repeatable across runs.
+
+## S5
+
+- **Acceptance year:** the prompt says "CA 2024-25" but the dataset only covers FY 2012-13 …
+  2014-15, so the orchestrator is exercised on **2014-15** (replay). Live ingest of all years
+  is the same code path with no `--replay-dir`.
+- **Verify by re-derivation:** before persisting, the orchestrator validates the output against
+  `AdapterOutput` and recomputes `resultHash` (shared `verify.RecomputeResultHash`), refusing
+  to persist on mismatch (D22). The resultHash recompute was extracted from the conformance
+  harness into `internal/verify` so both use one implementation.
+- **Failure recording:** exit 2 → "source unavailable", exit 3 → "contract validation", other →
+  "unexpected"; each writes a single `failed` `ingestion_run` row (`store.RecordFailedRun`),
+  with the exit code in the envelope JSON. The toy adapter gained an `OUTLAYS_TEST_FAIL=1|2`
+  hook to drive these paths deterministically.
+- **errgroup backfill** with `--concurrency` (bounded). Caveat: rate limiting is per adapter
+  process, so concurrent years relax the global per-host 1 req/s budget — bounded by the
+  concurrency flag; live large backfills should keep it small.
+- **CLI verified end to end:** `orchestrator run --adapter "node …cli.js" --year 2014-15
+  --replay-dir … --max-pages 1` applied migrations and ingested 989 facts (slog JSON logs).
+- **Integration tests are tag-gated** (`//go:build integration`) and run serially (`-p 1`)
+  because they reset the shared schema; plain `go test ./...` excludes them (D23).

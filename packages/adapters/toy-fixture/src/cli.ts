@@ -7,7 +7,7 @@
 // (py/adapter_sdk/examples/toy_fixture.py), so both produce the same resultHash — a
 // cross-language check on JCS hashing.
 
-import { runAdapter, type AdapterDefinition, type FactInput } from "@outlays/adapter-sdk";
+import { runAdapter, SourceUnavailableError, type AdapterDefinition, type FactInput } from "@outlays/adapter-sdk";
 import { CONTRACT_VERSION, type Entity, type EntityAlias } from "@outlays/contract";
 
 // Exact bytes of the synthetic upstream response (ASCII, no trailing newline).
@@ -40,6 +40,11 @@ const definition: AdapterDefinition = {
   },
 
   async fetchYear(ctx) {
+    // Test hook: simulate adapter failure paths for the orchestrator (S5).
+    const fail = process.env["OUTLAYS_TEST_FAIL"];
+    if (fail === "2") throw new SourceUnavailableError("simulated source unavailable");
+    if (fail === "1") throw new Error("simulated unexpected failure");
+
     const bytes = Buffer.from(RAW, "utf8");
     const snap = await ctx.snapshot({ url: `toy://toy/${ctx.year}`, bytes, httpStatus: 200 });
     const rows = JSON.parse(RAW) as Row[];
