@@ -280,3 +280,20 @@ the bottom.
   exact, and the denominator's `storageKey` exists in MinIO. Headless-Chromium walk (12
   checks, all green) including the badge rendering the honest low number with the scope
   label in the masthead.
+
+## post-S8 (dependency housekeeping)
+
+- **Dependabot alert #1 remediated** (GHSA-qx2v-qp2m-jg93 / CVE-2026-41305, medium,
+  CVSS 6.1): postcss < 8.5.10 fails to escape `</style>` when stringifying CSS, enabling
+  XSS **when an app parses user-submitted CSS and re-embeds the stringified output in an
+  HTML `<style>` tag**. Reachability assessed: postcss 8.4.31 appeared in our tree solely
+  as a transitive build-time dependency of Next.js (`packages/web`), processing first-party
+  stylesheets at `next build`; nothing in the repo accepts or stringifies user CSS (D25:
+  server-rendered UI, no client-side CSS pipeline). Not reachable in our usage — but the
+  fix is a one-line pnpm override (`"postcss@<8.5.10": ">=8.5.10"`, resolves 8.5.15), so it
+  was remediated rather than deferred. `pnpm -r build` green afterward, including the web
+  app whose Next.js pinned 8.4.31 exactly.
+- **Branch state discrepancy (recorded):** the task brief said research/gates was merged to
+  master, but `origin/master` was still at S8; the Gate 5–10 deliverables (including
+  `data/cofog/us-ca-procurement.json`) existed only on `origin/research/gates`. Merged that
+  branch into local master before starting (commit `c3f534b`), deliverables unmodified.
