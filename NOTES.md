@@ -101,3 +101,31 @@ the bottom.
 - **Acceptance evidence (replay, 989 facts):** conformance PASS; 58 vendors span ≥2
   departments (e.g. "WESTERN BLUE, AN NWN COMPANY" across 11); two runs produce byte-identical
   `fact_hash` values and `resultHash` `cb9a490d…`.
+
+## S4
+
+- **Port 5433:** the dev host runs Postgres.app on 5432, so the compose Postgres is published
+  on **5433** (`5433:5432`) to avoid the collision. `.env.example` and the integration test
+  default to 5433. The compose project is `outlays` (renamed in S2); old `fiscal-warehouse-*`
+  containers were removed.
+- **Migrations** are goose SQL, embedded via `//go:embed` and run programmatically
+  (`store.Migrate`, owner role). Four files: schema, append-only triggers, roles, seed.
+- **Append-only:** `reject_mutation()` `BEFORE UPDATE OR DELETE` on all 10 tables + `REVOKE
+  UPDATE,DELETE,TRUNCATE FROM app_rw` (D20). The seed `Down` uses `session_replication_role =
+  replica` to bypass triggers for a controlled rollback.
+- **Batched COPY writer** uses the temp-staging + `ON CONFLICT DO NOTHING` pattern (D21) so it
+  works against append-only tables and is idempotent. `jsonb` columns (`envelope`, alias
+  `source`) are passed to `CopyFrom`/`Exec` as JSON strings; numerics/uuids/dates via `pgtype`
+  helpers (`pgNumeric`/`pgUUID`/`pgDate`); money never touches float.
+- **Idempotency consequence:** content-addressed `fact_id` means re-ingest keeps the original
+  `run_id`. The integration test therefore **resets the schema** (`DROP SCHEMA public CASCADE`
+  as owner — append-only blocks TRUNCATE/DELETE) before each run to stay hermetic/repeatable.
+- **Roles:** migrations create group role `app_rw` (NOLOGIN, SELECT+INSERT only). The login
+  role is provisioned out of band (the integration test creates `app_login` + `GRANT app_rw`);
+  the app connects as that member and proves it can INSERT but not UPDATE/DELETE.
+- **Object store:** `minio-go/v7`; raw bytes + sidecar meta uploaded under
+  `raw/{jur}/{dataset}/{fy}/{sha}.bin`. Content-addressed keys make uploads idempotent.
+- **Integration test** (gated on infra; skips cleanly otherwise) ingests the real S3 adapter
+  output (989 facts / 442 entities / 448 aliases / 1978 assignments / 1 snapshot), asserts
+  UPDATE+DELETE raise on every table, the app REVOKE blocks UPDATE, the object key exists, and
+  a `supersedes` correction chains. Repeatable across runs.

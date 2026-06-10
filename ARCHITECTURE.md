@@ -226,6 +226,18 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
 - **D13 — `SchemeId` is a closed enum in the contract.** Mirrors the DB FK to
   `classification_scheme`; an unknown scheme fails pure schema validation. Adding a per-source
   scheme is a deliberate contract change + regen, not a runtime free-for-all. (S1)
+- **D20 — Append-only enforced on all ten data tables.** A `reject_mutation()` trigger fires
+  `BEFORE UPDATE OR DELETE` on every table; `app_rw` additionally has `UPDATE`/`DELETE`/
+  `TRUNCATE` revoked. `ingestion_run` is therefore written **once at run end** (status
+  succeeded/failed; a failed run is its own single insert) rather than updated through a
+  lifecycle. The `lead` status workflow (S11) must likewise be append-only (e.g. a lead-event
+  table or `supersedes`), since UPDATE is blocked — to be designed in S11. (S4)
+- **D21 — Batched COPY writer with deterministic ids ⇒ idempotent ingest.** Bulk rows are
+  `COPY`ed into a trigger-free `TEMP` table, then `INSERT … SELECT … ON CONFLICT DO NOTHING`
+  into the append-only table. Ids are content-addressed: `fact_id = uuidv5(fact_hash)`,
+  `alias_id = uuidv5(entity_id|name_raw)`, `assignment_id = uuidv5(fact_id|scheme|code|version)`.
+  Consequence: re-ingesting the same fact is a no-op and the fact keeps its **original**
+  `run_id` (facts are content-addressed, not per-run copies). (S4)
 - **D16 — California facts at line-item award grain.** The "Purchase Order Data" dataset is
   one row per PO line item; the adapter emits one `award`-grain fact per row (`amount` = that
   row's Total Price), not an aggregated per-PO total. Aggregation would fabricate or discard

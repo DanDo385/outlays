@@ -25,7 +25,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
   - ACCEPT: conformance green; one vendor's facts span multiple departments in a single
     query; fixture rerun reproduces identical `fact_hash` values.
 
-- [ ] **S4 — Stores + migrations.** Full DDL via goose incl. REVOKE + reject triggers and
+- [x] **S4 — Stores + migrations.** Full DDL via goose incl. REVOKE + reject triggers and
   `app_rw` role; object-store writer; Postgres batched COPY writer.
   - ACCEPT: integration test ingests the S3 output on compose; UPDATE/DELETE raises on every
     data table; a correction row chains via `supersedes`.

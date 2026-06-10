@@ -83,6 +83,49 @@ jobs:
       - uses: astral-sh/setup-uv@v5
       - run: bash scripts/conformance.sh
 
+  integration:
+    name: integration (Postgres + MinIO ingest)
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16
+        env:
+          POSTGRES_DB: fiscal
+          POSTGRES_USER: fiscal_owner
+          POSTGRES_PASSWORD: change_me_too
+        ports:
+          - 5433:5432
+        options: >-
+          --health-cmd "pg_isready -U fiscal_owner -d fiscal"
+          --health-interval 5s --health-timeout 5s --health-retries 20
+      minio:
+        image: bitnami/minio:latest
+        env:
+          MINIO_ROOT_USER: minioadmin
+          MINIO_ROOT_PASSWORD: minioadmin
+          MINIO_DEFAULT_BUCKETS: fiscal-raw
+        ports:
+          - 9000:9000
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: core/go.sum
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm --filter @outlays/contract build && pnpm --filter @outlays/adapter-sdk build && pnpm --filter @outlays/adapter-us-ca-procurement build
+      - name: wait for minio
+        run: until curl -sf http://localhost:9000/minio/health/ready; do sleep 2; done
+      - run: go test ./internal/store/ -run Integration -count=1 -v
+        working-directory: core
+
   schema-drift:
     name: schema drift guard (codegen regen must be a no-op)
     runs-on: ubuntu-latest
