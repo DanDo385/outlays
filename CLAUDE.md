@@ -65,6 +65,17 @@ or this file.
 
 ---
 
+## Research integration
+
+- Research deliverables arrive via git on the **research branch**, landing in `docs/sources/`,
+  `docs/`, and `data/cofog/`.
+- **Pull and check those paths before starting any backlog task** — several backlog items are
+  blocked until their source doc / mapping lands there.
+- **Never modify research deliverables.** If something is wrong or needs adjustment, propose
+  the correction in `NOTES.md` instead; do not edit the delivered files directly.
+
+---
+
 ## Repo layout
 
 ```
