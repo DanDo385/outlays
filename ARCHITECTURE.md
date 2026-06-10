@@ -226,6 +226,14 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
 - **D13 — `SchemeId` is a closed enum in the contract.** Mirrors the DB FK to
   `classification_scheme`; an unknown scheme fails pure schema validation. Adding a per-source
   scheme is a deliberate contract change + regen, not a runtime free-for-all. (S1)
+- **D15 — `resultHash` is deterministic over the fact set.** An adapter's `--out` document is
+  `AdapterOutput` = `{ envelope, facts, entities?, entityAliases? }`. `envelope.resultHash` =
+  SHA-256 over RFC 8785 (JCS) canonical JSON of `facts` after (a) dropping volatile fields
+  (`factId`, `runId`, `insertedAt`) and (b) sorting by `factHash` ascending. `factHash` =
+  JCS+SHA-256 of a fact's content excluding volatile fields and `assignments`. This makes
+  `resultHash` independent of emit order and free of per-run noise, so the same fixtures
+  reproduce the same hash — verified byte-identical across the TS SDK, Python SDK, and Go
+  conformance harness. The SDKs and the harness MUST keep this rule in lockstep. (S2)
 - **D14 — Project renamed `fiscal-warehouse` → `outlays`.** The original name in the build
   prompt was "Fiscal Warehouse" (kebab `fiscal-warehouse`). The project is now **Outlays**:
   npm scope `@outlays/*`, Go module `github.com/djmagro/outlays/core`, User-Agent

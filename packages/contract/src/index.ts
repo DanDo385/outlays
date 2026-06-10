@@ -17,6 +17,9 @@ export {
 /** Envelope version pinned by the contract. */
 export const ENVELOPE_VERSION = "1" as const;
 
+/** Contract version reported by adapter manifests (`contractVersion`). */
+export const CONTRACT_VERSION = "0.1.0" as const;
+
 /** Decimal-string money regex (mirrors ARCHITECTURE.md Hard Rule 2). */
 export const MONEY_PATTERN = /^-?\d{1,18}(\.\d{1,4})?$/;
 

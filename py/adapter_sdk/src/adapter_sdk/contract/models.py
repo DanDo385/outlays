@@ -214,6 +214,16 @@ class IngestionEnvelope(BaseModel):
     signerKeyId: str | None
 
 
+class AdapterOutput(BaseModel):
+    model_config = ConfigDict(
+        extra="forbid",
+    )
+    envelope: IngestionEnvelope
+    facts: list[FiscalFact]
+    entities: list[Entity] | None = None
+    entityAliases: list[EntityAlias] | None = None
+
+
 class FiscalNodeView(BaseModel):
     model_config = ConfigDict(
         extra="forbid",

@@ -47,6 +47,7 @@ export interface OutlaysContract {
   ControlTotal?: ControlTotal;
   RawSnapshotRef?: RawSnapshotRef;
   IngestionEnvelope?: IngestionEnvelope;
+  AdapterOutput?: AdapterOutput;
   FiscalNodeView?: FiscalNodeView;
   FiscalYearView?: FiscalYearView;
 }
@@ -135,6 +136,15 @@ export interface IngestionEnvelope {
   resultHash: Sha256;
   signature: string | null;
   signerKeyId: string | null;
+}
+/**
+ * The document an adapter writes to --out: the run envelope plus the derived facts (and any provisional entities/aliases). envelope.resultHash is the SHA-256 over RFC 8785 (JCS) canonical JSON of the facts, sorted by factHash — deterministic across runs.
+ */
+export interface AdapterOutput {
+  envelope: IngestionEnvelope;
+  facts: FiscalFact[];
+  entities?: Entity[];
+  entityAliases?: EntityAlias[];
 }
 /**
  * One level of a computed category tree (API payload only, NOT storage).

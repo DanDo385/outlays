@@ -64,6 +64,25 @@ jobs:
       - run: uv run pytest -q
         working-directory: py/adapter_sdk
 
+  conformance:
+    name: conformance (toy adapter, TS + Python)
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: pnpm/action-setup@v4
+        with:
+          version: 10.15.1
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+      - uses: actions/setup-go@v5
+        with:
+          go-version: "1.25"
+          cache-dependency-path: core/go.sum
+      - uses: astral-sh/setup-uv@v5
+      - run: bash scripts/conformance.sh
+
   schema-drift:
     name: schema drift guard (codegen regen must be a no-op)
     runs-on: ubuntu-latest

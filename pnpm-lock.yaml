@@ -17,7 +17,29 @@ importers:
       '@outlays/contract':
         specifier: workspace:*
         version: link:../contract
+      canonicalize:
+        specifier: ^2.0.0
+        version: 2.1.0
     devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.20
+      typescript:
+        specifier: ^5.6.3
+        version: 5.9.3
+
+  packages/adapters/toy-fixture:
+    dependencies:
+      '@outlays/adapter-sdk':
+        specifier: workspace:*
+        version: link:../../adapter-sdk-ts
+      '@outlays/contract':
+        specifier: workspace:*
+        version: link:../../contract
+    devDependencies:
+      '@types/node':
+        specifier: ^22.10.0
+        version: 22.19.20
       typescript:
         specifier: ^5.6.3
         version: 5.9.3
@@ -254,6 +276,10 @@ packages:
   argparse@2.0.1:
     resolution: {integrity: sha512-8+9WqebbFzpX9OR+Wa6O29asIogeRMzcGtAINdpMHHyAg10f05aSFVBbcEqGf/PXw1EjAZ+q2/bEBg3DvurK3Q==}
 
+  canonicalize@2.1.0:
+    resolution: {integrity: sha512-F705O3xrsUtgt98j7leetNhTWPe+5S72rlL5O4jA1pKqBVQ/dT1O1D6PFxmSXvc0SUOinWS57DKx0I3CHrXJHQ==}
+    hasBin: true
+
   esbuild@0.28.0:
     resolution: {integrity: sha512-sNR9MHpXSUV/XB4zmsFKN+QgVG82Cc7+/aaxJ8Adi8hyOac+EXptIp45QBPaVyX3N70664wRbTcLTOemCAnyqw==}
     engines: {node: '>=18'}
@@ -443,6 +469,8 @@ snapshots:
       require-from-string: 2.0.2
 
   argparse@2.0.1: {}
+
+  canonicalize@2.1.0: {}
 
   esbuild@0.28.0:
     optionalDependencies:

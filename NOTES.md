@@ -46,3 +46,27 @@ the bottom.
   is a contract change + regen.
 - Drift guard verified both ways: green when types match the schema, red when the schema
   changes without regeneration. Codegen confirmed byte-identical across two runs.
+
+## S2
+
+- **`AdapterOutput` added to the contract** as the adapter `--out` document
+  (`{ envelope, facts, entities?, entityAliases? }`). Regenerated all three languages.
+- **Adapter output shape:** `fetchYear` returns facts *without* `factHash` (and without DB
+  fields); the SDK scaffold fills `factHash` and computes `resultHash` (see Decision D15), so
+  contributors never hand-roll hashing.
+- **`resultHash` parity proven across languages.** The TS SDK (`canonicalize`), Python SDK
+  (`rfc8785`), and Go harness (`cyberphone/json-canonicalization`) all produce the *identical*
+  `resultHash` (`fd28684f…`) and identical raw `sha256` for the toy adapter — a strong check
+  that JCS is implemented consistently. Pinned as a golden value in the Python test.
+- **Toy adapters are network-free** and byte-for-byte identical across TS and Python (shared
+  `RAW` payload), so conformance needs no recorded fixtures yet; real fixture replay arrives
+  with the live CA adapter in S3.
+- **Conformance harness** (`core/cmd/conformance`, `internal/conformance`) runs an adapter
+  command through `info` / `list-years` / `fetch`×2 and checks: manifest fields, year pattern +
+  descending order, exit 0, schema validity of the out doc, every `.bin` hashes to its name,
+  declared `rawSnapshots` present/correct, recomputed `resultHash` == declared, and
+  determinism across two runs. The Go unit test runs the built TS adapter and self-skips when
+  it or `node` is absent, keeping `go test ./...` green without the JS toolchain.
+- **Go recompute detail:** facts are parsed as `map[string]json.RawMessage`, volatile keys
+  deleted, sorted by `factHash`, marshaled (Go sorts map keys), then JCS-canonicalized — the
+  canonicalizer normalizes the pretty-printed whitespace, so it matches the SDKs.

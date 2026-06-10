@@ -7,7 +7,11 @@ license = { text = "Apache-2.0" }
 dependencies = [
     "pydantic>=2.7",
     "jsonschema>=4.21",
+    "rfc8785>=0.1.2",
 ]
+
+[project.scripts]
+toy-fixture = "adapter_sdk.examples.toy_fixture:main"
 
 [build-system]
 requires = ["hatchling"]

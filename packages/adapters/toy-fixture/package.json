@@ -1,16 +1,11 @@
 {
-  "name": "@outlays/adapter-sdk",
+  "name": "@outlays/adapter-toy-fixture",
   "version": "0.0.0",
   "private": true,
   "license": "Apache-2.0",
   "type": "module",
-  "main": "./dist/index.js",
-  "types": "./dist/index.d.ts",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "default": "./dist/index.js"
-    }
+  "bin": {
+    "toy-fixture": "./dist/cli.js"
   },
   "files": ["dist"],
   "scripts": {
@@ -18,8 +13,8 @@
     "typecheck": "tsc -p tsconfig.json --noEmit"
   },
   "dependencies": {
-    "@outlays/contract": "workspace:*",
-    "canonicalize": "^2.0.0"
+    "@outlays/adapter-sdk": "workspace:*",
+    "@outlays/contract": "workspace:*"
   },
   "devDependencies": {
     "@types/node": "^22.10.0",

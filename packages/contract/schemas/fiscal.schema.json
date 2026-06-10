@@ -221,6 +221,28 @@
         "signerKeyId": { "type": ["string", "null"] }
       }
     },
+    "AdapterOutput": {
+      "title": "AdapterOutput",
+      "description": "The document an adapter writes to --out: the run envelope plus the derived facts (and any provisional entities/aliases). envelope.resultHash is the SHA-256 over RFC 8785 (JCS) canonical JSON of the facts, sorted by factHash — deterministic across runs.",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["envelope", "facts"],
+      "properties": {
+        "envelope": { "$ref": "#/$defs/IngestionEnvelope" },
+        "facts": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/FiscalFact" }
+        },
+        "entities": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/Entity" }
+        },
+        "entityAliases": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/EntityAlias" }
+        }
+      }
+    },
     "FiscalNodeView": {
       "title": "FiscalNodeView",
       "description": "One level of a computed category tree (API payload only, NOT storage).",

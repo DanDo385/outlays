@@ -13,7 +13,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
     fact missing `raw_sha256`; assignment with unknown scheme); valid fixtures pass; drift
     guard green in CI.
 
-- [ ] **S2 — Adapter SDKs (TS + Python) + conformance harness** (Section 4).
+- [x] **S2 — Adapter SDKs (TS + Python) + conformance harness** (Section 4).
   - ACCEPT: a toy fixture adapter passes conformance in both languages; `resultHash` is
     identical across two runs on the same fixtures.
 

@@ -5,6 +5,24 @@ package contract
 import "github.com/atombender/go-jsonschema/pkg/types"
 import "time"
 
+// The document an adapter writes to --out: the run envelope plus the derived facts
+// (and any provisional entities/aliases). envelope.resultHash is the SHA-256 over
+// RFC 8785 (JCS) canonical JSON of the facts, sorted by factHash — deterministic
+// across runs.
+type AdapterOutput struct {
+	// Entities corresponds to the JSON schema field "entities".
+	Entities []Entity `json:"entities,omitempty,omitzero" yaml:"entities,omitempty" mapstructure:"entities,omitempty"`
+
+	// EntityAliases corresponds to the JSON schema field "entityAliases".
+	EntityAliases []EntityAlias `json:"entityAliases,omitempty,omitzero" yaml:"entityAliases,omitempty" mapstructure:"entityAliases,omitempty"`
+
+	// Envelope corresponds to the JSON schema field "envelope".
+	Envelope IngestionEnvelope `json:"envelope" yaml:"envelope" mapstructure:"envelope"`
+
+	// Facts corresponds to the JSON schema field "facts".
+	Facts []FiscalFact `json:"facts" yaml:"facts" mapstructure:"facts"`
+}
+
 type AssignedBy string
 
 const AssignedByHuman AssignedBy = "human"
