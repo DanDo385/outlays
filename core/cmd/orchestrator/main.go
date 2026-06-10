@@ -1,11 +1,14 @@
 // Command orchestrator runs an adapter per the CLI protocol, validates and verifies its
 // output by re-derivation, persists it, and marks run status. Supports concurrent multi-year
-// backfill.
+// backfill. The classify subcommand applies a reviewed COFOG mapping file as versioned
+// classification_assignment rows (S9).
 //
 // Usage:
 //
 //	orchestrator run --adapter "node /abs/dist/cli.js" --year 2014-15
 //	orchestrator run --adapter "node /abs/dist/cli.js" --years 2012-13,2013-14,2014-15 --concurrency 2
+//	orchestrator classify --mapping data/cofog/us-ca-procurement.json --jurisdiction us-ca --year 2014-15
+//	orchestrator classify --mapping ... --jurisdiction us-ca --year 2014-15 --list-unmapped
 //
 // DB/object-store come from env (DATABASE_URL, MIGRATE_DATABASE_URL, S3_*). With
 // --replay-dir, the adapter runs offline against recorded fixtures.
@@ -13,22 +16,111 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"flag"
 	"fmt"
 	"log/slog"
 	"os"
+	"regexp"
 	"strings"
 
+	"github.com/djmagro/outlays/core/internal/classify"
 	"github.com/djmagro/outlays/core/internal/ingest"
 	"github.com/djmagro/outlays/core/internal/store"
 )
 
+const usage = `usage:
+  orchestrator run --adapter <cmd> (--year <Y> | --years <Y1,Y2>) [--dataset <d>] [--concurrency N] [--replay-dir <dir>] [--max-pages N]
+  orchestrator classify --mapping <path> --jurisdiction <jur> --year <Y> [--flow spending|revenue] [--dry-run] [--list-unmapped]`
+
 func main() {
-	if len(os.Args) < 2 || os.Args[1] != "run" {
-		fmt.Fprintln(os.Stderr, "usage: orchestrator run --adapter <cmd> (--year <Y> | --years <Y1,Y2>) [--dataset <d>] [--concurrency N] [--replay-dir <dir>] [--max-pages N]")
+	if len(os.Args) < 2 {
+		fmt.Fprintln(os.Stderr, usage)
+		os.Exit(2)
+	}
+	switch os.Args[1] {
+	case "run":
+		runMain(os.Args[2:])
+	case "classify":
+		classifyMain(os.Args[2:])
+	default:
+		fmt.Fprintln(os.Stderr, usage)
+		os.Exit(2)
+	}
+}
+
+var fiscalYearRe = regexp.MustCompile(`^\d{4}(-\d{2})?$`)
+
+// classifyMain loads a reviewed COFOG mapping and applies it to one jurisdiction-year-flow.
+// It exits non-zero if the resulting cofog view does not reconcile exactly.
+func classifyMain(args []string) {
+	fs := flag.NewFlagSet("classify", flag.ExitOnError)
+	mapping := fs.String("mapping", "", "path to reviewed mapping JSON (data/cofog/*.json)")
+	jurisdiction := fs.String("jurisdiction", "", "jurisdiction the mapping applies to, e.g. us-ca")
+	year := fs.String("year", "", "fiscal year to classify, e.g. 2014-15")
+	flow := fs.String("flow", "spending", "flow to classify (spending|revenue)")
+	dryRun := fs.Bool("dry-run", false, "plan and report without writing")
+	listUnmapped := fs.Bool("list-unmapped", false, "print only the unmapped-categories report (implies --dry-run)")
+	_ = fs.Parse(args)
+
+	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	if *mapping == "" || *jurisdiction == "" || *year == "" {
+		log.Error("--mapping, --jurisdiction and --year are required")
+		os.Exit(2)
+	}
+	if !fiscalYearRe.MatchString(*year) {
+		log.Error("invalid fiscal year", "year", *year)
+		os.Exit(2)
+	}
+	if *flow != "spending" && *flow != "revenue" {
+		log.Error("invalid flow", "flow", *flow)
 		os.Exit(2)
 	}
 
+	m, err := classify.LoadMapping(*mapping, *jurisdiction)
+	if err != nil {
+		log.Error("load mapping", "err", err)
+		os.Exit(2)
+	}
+
+	ctx := context.Background()
+	pool, err := store.Connect(ctx, mustEnv(log, "DATABASE_URL"))
+	if err != nil {
+		log.Error("connect db", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+
+	report, err := classify.Apply(ctx, pool, m, *jurisdiction, *year, *flow, *dryRun || *listUnmapped)
+	if err != nil {
+		log.Error("classify", "err", err)
+		os.Exit(1)
+	}
+
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	if *listUnmapped {
+		_ = enc.Encode(map[string]any{
+			"mappingFile":        report.MappingFile,
+			"mappingSha256":      report.MappingSha256,
+			"jurisdiction":       report.Jurisdiction,
+			"fiscalYear":         report.FiscalYear,
+			"flow":               report.Flow,
+			"unmappedCategories": report.UnmappedCategories,
+		})
+		return
+	}
+	_ = enc.Encode(report)
+	if !report.Reconciliation.Reconciles {
+		log.Error("cofog view does not reconcile (facts were dropped)")
+		os.Exit(1)
+	}
+	log.Info("classify done",
+		"inserted", report.Inserted, "upToDate", report.UpToDate,
+		"unmappedCategories", len(report.UnmappedCategories), "dryRun", report.DryRun)
+}
+
+func runMain(args []string) {
 	fs := flag.NewFlagSet("run", flag.ExitOnError)
 	adapter := fs.String("adapter", "", `adapter base command, e.g. "node /abs/dist/cli.js"`)
 	year := fs.String("year", "", "single fiscal year")
@@ -37,7 +129,7 @@ func main() {
 	concurrency := fs.Int("concurrency", 2, "max concurrent years")
 	replayDir := fs.String("replay-dir", "", "OUTLAYS_REPLAY_DIR for offline replay")
 	maxPages := fs.Int("max-pages", 0, "OUTLAYS_MAX_PAGES (0 = unbounded)")
-	_ = fs.Parse(os.Args[2:])
+	_ = fs.Parse(args)
 
 	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
 

@@ -297,3 +297,46 @@ the bottom.
   master, but `origin/master` was still at S8; the Gate 5–10 deliverables (including
   `data/cofog/us-ca-procurement.json`) existed only on `origin/research/gates`. Merged that
   branch into local master before starting (commit `c3f534b`), deliverables unmodified.
+
+## S9
+
+- **Loader shape:** `orchestrator classify` subcommand + `core/internal/classify`. Reads a
+  reviewed mapping file (`data/cofog/*.json`) — a research deliverable the loader never
+  writes; corrections are proposed here, not edited in. Mapping keys `<prefix>: <category>`
+  resolve through a per-jurisdiction prefix table (in-source constants, Hard Rule 8):
+  `us-ca` → `department:`→`us_ca_department`, `acquisition_type:`→`us_ca_acquisition_type`.
+  Strict validation: cofogCode must be a seeded `01`–`10` or `unmapped`; confidence in
+  {low, medium, high}; basis (citation) required; unknown entry fields rejected.
+- **`unmapped` is a reviewed non-mapping, not an absence.** Entries with
+  `cofogCode='unmapped'` (all five acquisition types + HHS Agency — inputs, not functions,
+  per the mapping policy) produce zero rows and are reported as `reviewed_unmapped`;
+  source categories absent from the file are reported as `unreviewed`. Both lists carry
+  fact counts and amounts and are printed by `--list-unmapped` (and in every apply report):
+  38 categories on the replay slice — 6 reviewed-unmapped, 32 unreviewed departments
+  beyond the reviewed top-25.
+- **Confidence is preserved twice:** the reviewer's ordinal word verbatim inside `basis`,
+  and a documented numeric translation (low→0.25, medium→0.5, high→0.75) in the NUMERIC
+  `confidence` column so it is comparable with other assigners.
+- **Basis is canonical JSON** `{ruleId, citation, sourceCategory, confidence, entrySha256}`
+  (Hard Rule 5: rule id + citation). `entrySha256` = JCS+SHA-256 over the exact reviewed
+  entry. The whole-file sha is deliberately **not** embedded in basis — unrelated entry
+  edits would otherwise re-version every assignment; the file sha is reported per run
+  instead, and the entry hash pins the reviewed content precisely.
+- **Versioning / idempotency:** first assignment is version 1; if the entry for a fact's
+  category changes (code, confidence, or basis), a new row appends at latest+1 and the
+  view's `DISTINCT ON ... ORDER BY version DESC` (D24) picks it up. Re-applying an
+  unchanged mapping inserts nothing (deterministic `assignment_id`, D21). A fact whose
+  latest cofog assignment is `human` is never overridden by the rule loader
+  (`skippedHumanOverride`). Facts whose mapped categories disagree on the code get
+  nothing — ambiguity stays unmapped and is reported as a conflict (zero on the real file,
+  by its own design: acquisition types are all unmapped).
+- **Reconciliation is enforced, not assumed:** the loader recomputes the cofog view and an
+  independent count/sum over current facts, requires node-sum == view total == fact sum
+  and mapped + unclassified == total in exact decimal-string math, and the CLI exits
+  non-zero on any mismatch. Replay evidence (989 facts): 861 mapped by 24 department
+  entries, 128 unclassified; `30208583.0000 + 8487236.9100 == 38695819.9100` exactly;
+  cofog view shows 9 code nodes (no `09` — no mapped department is education-functioned)
+  plus `__unclassified__`, identical total to the department/payee pivots.
+- **Test-only discovery:** `ruleId` derives from the mapping file name, so a temp copy
+  named differently legitimately re-versions everything — the integration test's modified
+  mapping must keep the original file name.

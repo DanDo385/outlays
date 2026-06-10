@@ -45,14 +45,14 @@ type ControlTotal struct {
 }
 
 type Envelope struct {
-	RunID          string         `json:"runId"`
-	AdapterID      string         `json:"adapterId"`
-	AdapterVersion string         `json:"adapterVersion"`
-	Jurisdiction   string         `json:"jurisdiction"`
-	FiscalYear     string         `json:"fiscalYear"`
-	FetchedAt      string         `json:"fetchedAt"`
-	ResultHash     string         `json:"resultHash"`
-	RawSnapshots   []RawSnapshot  `json:"rawSnapshots"`
+	RunID          string        `json:"runId"`
+	AdapterID      string        `json:"adapterId"`
+	AdapterVersion string        `json:"adapterVersion"`
+	Jurisdiction   string        `json:"jurisdiction"`
+	FiscalYear     string        `json:"fiscalYear"`
+	FetchedAt      string        `json:"fetchedAt"`
+	ResultHash     string        `json:"resultHash"`
+	RawSnapshots   []RawSnapshot `json:"rawSnapshots"`
 }
 
 type RawSnapshot struct {
@@ -120,6 +120,12 @@ func ParseDocument(data []byte) (*Document, error) {
 
 // FactID is the deterministic fact_id derived from a fact's content hash.
 func FactID(factHash string) string { return uuid.NewSHA1(factNS, []byte(factHash)).String() }
+
+// AssignmentID is the deterministic assignment_id (D21): UUIDv5 over fact|scheme|code|version,
+// so re-applying the same assignment is an ON CONFLICT no-op.
+func AssignmentID(factID, schemeID, code string, version int) string {
+	return uuid.NewSHA1(assignNS, []byte(fmt.Sprintf("%s|%s|%s|%d", factID, schemeID, code, version))).String()
+}
 
 // IngestResult summarizes what was written.
 type IngestResult struct {
@@ -327,7 +333,7 @@ func factAndAssignmentRows(runID string, facts []Fact) (factRows, assignRows [][
 			pgDate(f.OccurredOn), f.Description, f.RawSha256, f.DerivationQuery, f.FactHash, pgUUIDPtr(f.Supersedes),
 		})
 		for _, a := range f.Assignments {
-			assignID := uuid.NewSHA1(assignNS, []byte(fmt.Sprintf("%s|%s|%s|%d", factID, a.SchemeID, a.Code, a.Version))).String()
+			assignID := AssignmentID(factID, a.SchemeID, a.Code, a.Version)
 			assignRows = append(assignRows, []any{
 				pgUUID(assignID), pgUUID(factID), a.SchemeID, a.Code, a.AssignedBy, pgFloat(a.Confidence), a.Basis, a.Version,
 			})

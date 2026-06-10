@@ -111,9 +111,9 @@ func scanView(ctx context.Context, pool *pgxpool.Pool, v *View, q string, args .
 	}
 
 	// Total + unmapped derived from the nodes (they already reconcile).
-	total, unmapped := addDecimals("0.0000", "0.0000"), "0.0000"
+	total, unmapped := AddDecimals("0.0000", "0.0000"), "0.0000"
 	for _, n := range v.Nodes {
-		total = addDecimals(total, n.Amount)
+		total = AddDecimals(total, n.Amount)
 		if n.Code == UnclassifiedCode {
 			unmapped = n.Amount
 		}
@@ -199,7 +199,7 @@ func EntityFlowsByDepartment(ctx context.Context, pool *pgxpool.Pool, entityID, 
 		}
 		n.Currency = "USD"
 		ef.ByDepartment = append(ef.ByDepartment, n)
-		total = addDecimals(total, n.Amount)
+		total = AddDecimals(total, n.Amount)
 	}
 	ef.Total = total
 	return ef, rows.Err()
@@ -470,8 +470,8 @@ func scanStrings(ctx context.Context, pool *pgxpool.Pool, q string, args ...any)
 	return out, rows.Err()
 }
 
-// addDecimals adds two 4dp decimal strings without floats (integer minor-units math).
-func addDecimals(a, b string) string {
+// AddDecimals adds two 4dp decimal strings without floats (integer minor-units math).
+func AddDecimals(a, b string) string {
 	return formatMinor(parseMinor(a) + parseMinor(b))
 }
 

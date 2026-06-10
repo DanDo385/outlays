@@ -54,7 +54,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
   - ACCEPT: coverage returns numerator and denominator each with provenance links; the
     honest low number renders in the UI.
 
-- [ ] **S9 — Classification ingest.** Loader for reviewed mapping JSON (`data/cofog/*.json`,
+- [x] **S9 — Classification ingest.** Loader for reviewed mapping JSON (`data/cofog/*.json`,
     `{sourceCategory: {cofogCode, confidence, basis}}`) into versioned
     `classification_assignment` rows. Never invent mappings; against a fixture if no file.
   - ACCEPT: with a fixture mapping applied, the cofog view endpoint returns a rollup and

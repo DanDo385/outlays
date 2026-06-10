@@ -323,6 +323,22 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
   new optional `scheme`+`code` node filter (mirroring the view endpoint, incl. `scheme=payee`
   and `__unclassified__`), ordered largest-first; all routes are `force-dynamic` so `next
   build` never touches the API. (S7)
+- **D28 — Reviewed COFOG mappings apply as versioned rule assignments; unmapped is a
+  reviewed state.** The classify loader (`orchestrator classify`) reads a reviewed mapping
+  file (`data/cofog/*.json`, a research deliverable it never modifies) and appends
+  `assigned_by='rule'` cofog rows. `cofogCode='unmapped'` entries are deliberate
+  non-mappings (e.g. acquisition types describe purchased inputs, not government
+  functions): zero rows, reported explicitly as reviewed-unmapped, distinct from
+  unreviewed categories absent from the file. Reviewer confidence is preserved verbatim in
+  `basis` and translated (low/medium/high → 0.25/0.5/0.75) into the NUMERIC column.
+  `basis` is canonical JSON `{ruleId, citation, sourceCategory, confidence, entrySha256}`
+  — the entry hash (JCS+SHA-256) pins the reviewed content without whole-file churn.
+  Entry changes append at version latest+1; identical re-runs insert nothing
+  (deterministic ids, D21); a fact whose latest cofog assignment is human-made is never
+  overridden by the loader; facts whose mapped categories disagree on a code receive
+  nothing (ambiguity stays unmapped) and are reported. The loader re-verifies D24's
+  reconciliation guarantee in exact decimal math and exits non-zero if mapped +
+  unclassified != total. (S9)
 - **D14 — Project renamed `fiscal-warehouse` → `outlays`.** The original name in the build
   prompt was "Fiscal Warehouse" (kebab `fiscal-warehouse`). The project is now **Outlays**:
   npm scope `@outlays/*`, Go module `github.com/djmagro/outlays/core`, User-Agent
