@@ -70,3 +70,34 @@ the bottom.
 - **Go recompute detail:** facts are parsed as `map[string]json.RawMessage`, volatile keys
   deleted, sorted by `factHash`, marshaled (Go sorts map keys), then JCS-canonicalized — the
   canonicalizer normalizes the pretty-printed whitespace, so it matches the SDKs.
+
+## S3
+
+- **Source verified live (2026-06-09):** CKAN resource `bb82edc5-…` is still up, **344,504
+  rows**. `datastore_search_sql` works over GET (used by `listYears`); `filters` JSON param
+  works for the year filter. Resource id unchanged — no NOTES relocation needed.
+- **Coverage is FY 2012-13 … 2014-15 only** (108k / 120k / 116k rows) — older eSCPRS data, no
+  recent years. Conformance/fixtures therefore target **2014-15**, not 2024-25.
+- **Fiscal-year format mismatch:** source uses `"2014-2015"`; the contract/param regex wants
+  `2014-15`. Adapter maps both ways (`toCanonicalFiscalYear` / `toSourceFiscalYear`).
+- **Grain decision:** the dataset is **line-item** grain (one row per PO line, with its own
+  `Total Price`), so the adapter emits **one award-grain fact per source row**, not an
+  aggregated per-PO total. Aggregating would either fabricate or discard line detail; keeping
+  the source's own grain is the honest choice (Hard Rule: never fabricate finer grain). Each
+  fact's `derivationQuery` pins the row's datastore `_id`; `rawSha256` = the page snapshot.
+- **Money:** `Total Price` like `"$1,362.00 "` → `normalizeMoney` (strip `$`,`,`,space, handle
+  parens/sign, pad fraction to 4) → contract decimal string; rows with no parseable amount are
+  skipped and counted (11/1000 in the sample).
+- **Per-source schemes added:** `us_ca_department`, `us_ca_acquisition_type` (closed-enum
+  additions per D13), assigned with `assignedBy='source'`.
+- **Provisional vendors:** `payeeEntity` = `uuidv5("us-ca:vendor:" + NORMALIZED_NAME)` (exact
+  normalized-name match, NO fuzzy merging). Entities + append-only aliases (`matchedBy='rule'`,
+  `confidence=0.5`, `source` carries supplierCode + normalized). Deterministic ids make
+  `factHash` reproducible and let one vendor be queried across departments.
+- **HTTP record/replay** added to the SDK (`OUTLAYS_REPLAY_DIR` / `OUTLAYS_RECORD_DIR`, live
+  otherwise; UA + per-host rate limit + backoff). Fixtures committed under the adapter's
+  `fixtures/replay/`. **Replay requires `OUTLAYS_MAX_PAGES=1`** since only the first 1000-row
+  page is recorded (full year ≈ 116 pages). The Go conformance test and CI set this.
+- **Acceptance evidence (replay, 989 facts):** conformance PASS; 58 vendors span ≥2
+  departments (e.g. "WESTERN BLUE, AN NWN COMPANY" across 11); two runs produce byte-identical
+  `fact_hash` values and `resultHash` `cb9a490d…`.

@@ -1,0 +1,12 @@
+{
+  "entries": {
+    "https://data.ca.gov/api/3/action/datastore_search_sql?sql=SELECT+DISTINCT+%22Fiscal+Year%22+FROM+%22bb82edc5-9c78-44e2-8947-68ece26197c5%22": {
+      "file": "9b5ec6d69ee3c3d0.bin",
+      "status": 200
+    },
+    "https://data.ca.gov/api/3/action/datastore_search?resource_id=bb82edc5-9c78-44e2-8947-68ece26197c5&limit=1000&offset=0&filters=%7B%22Fiscal+Year%22%3A%222014-2015%22%7D": {
+      "file": "cfd1dbf87597497e.bin",
+      "status": 200
+    }
+  }
+}

@@ -52,3 +52,38 @@ func TestToyAdapterConformance(t *testing.T) {
 		t.Fatalf("toy adapter did not pass conformance")
 	}
 }
+
+// TestCAProcurementConformanceReplay runs the California adapter against its recorded
+// fixtures (offline). Skipped when the adapter is not built, fixtures are absent, or node is
+// unavailable. The conformance CI job builds the adapter and provides the same fixtures.
+func TestCAProcurementConformanceReplay(t *testing.T) {
+	root := repoRoot(t)
+	cli := filepath.Join(root, "packages", "adapters", "us-ca-procurement", "dist", "cli.js")
+	fixtures := filepath.Join(root, "packages", "adapters", "us-ca-procurement", "fixtures", "replay")
+	if _, err := os.Stat(cli); err != nil {
+		t.Skip("CA adapter not built")
+	}
+	if _, err := os.Stat(filepath.Join(fixtures, "index.json")); err != nil {
+		t.Skip("CA fixtures not present")
+	}
+	node, err := exec.LookPath("node")
+	if err != nil {
+		t.Skip("node not on PATH")
+	}
+
+	t.Setenv("OUTLAYS_REPLAY_DIR", fixtures)
+	t.Setenv("OUTLAYS_MAX_PAGES", "1")
+
+	res, err := Run([]string{node, cli}, "2014-15", t.TempDir())
+	if err != nil {
+		t.Fatalf("conformance run error: %v", err)
+	}
+	for _, c := range res.Checks {
+		if !c.Pass {
+			t.Errorf("check failed: %s — %s", c.Name, c.Detail)
+		}
+	}
+	if !res.Passed() {
+		t.Fatalf("CA adapter did not pass conformance in replay mode")
+	}
+}

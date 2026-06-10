@@ -332,6 +332,8 @@ const SchemeIdObjectClass SchemeId = "object_class"
 const SchemeIdProgram SchemeId = "program"
 const SchemeIdRecipientType SchemeId = "recipient_type"
 const SchemeIdTag SchemeId = "tag"
+const SchemeIdUsCaAcquisitionType SchemeId = "us_ca_acquisition_type"
+const SchemeIdUsCaDepartment SchemeId = "us_ca_department"
 
 // Lowercase hex SHA-256 digest.
 type Sha256 string

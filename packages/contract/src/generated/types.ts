@@ -26,7 +26,16 @@ export type AssignedBy = "source" | "rule" | "model" | "human";
 /**
  * Known classification schemes. Closed set: an unknown scheme is rejected (mirrors the DB FK to classification_scheme). New per-source schemes are added here as the contract evolves.
  */
-export type SchemeId = "cofog" | "object_class" | "department" | "fund" | "program" | "recipient_type" | "tag";
+export type SchemeId =
+  | "cofog"
+  | "object_class"
+  | "department"
+  | "fund"
+  | "program"
+  | "recipient_type"
+  | "tag"
+  | "us_ca_department"
+  | "us_ca_acquisition_type";
 
 export interface OutlaysContract {
   Money?: Money;

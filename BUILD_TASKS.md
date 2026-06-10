@@ -17,7 +17,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
   - ACCEPT: a toy fixture adapter passes conformance in both languages; `resultHash` is
     identical across two runs on the same fixtures.
 
-- [ ] **S3 — California procurement adapter at award grain.** CKAN datastore on
+- [x] **S3 — California procurement adapter at award grain.** CKAN datastore on
   data.ca.gov, "Purchase Order Data", resource `bb82edc5-9c78-44e2-8947-68ece26197c5`
   (verify live first; record any move in NOTES.md). One fact per PO; `source` assignments
   for department + acquisition type; supplier names as `entity_alias` on provisional vendor

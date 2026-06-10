@@ -93,6 +93,8 @@ class SchemeId(Enum):
     program = "program"
     recipient_type = "recipient_type"
     tag = "tag"
+    us_ca_department = "us_ca_department"
+    us_ca_acquisition_type = "us_ca_acquisition_type"
 
 
 class SourceRef(BaseModel):

@@ -226,6 +226,24 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
 - **D13 — `SchemeId` is a closed enum in the contract.** Mirrors the DB FK to
   `classification_scheme`; an unknown scheme fails pure schema validation. Adding a per-source
   scheme is a deliberate contract change + regen, not a runtime free-for-all. (S1)
+- **D16 — California facts at line-item award grain.** The "Purchase Order Data" dataset is
+  one row per PO line item; the adapter emits one `award`-grain fact per row (`amount` = that
+  row's Total Price), not an aggregated per-PO total. Aggregation would fabricate or discard
+  line detail; the source's own grain is kept. `derivationQuery` pins the row `_id`. (S3)
+- **D17 — Deterministic provisional vendor ids; no fuzzy merging.** `payeeEntity` =
+  UUIDv5 of the normalized supplier name (trim + collapse whitespace + uppercase only). Exact
+  normalized-name match maps to one entity; differing raw spellings become append-only aliases
+  (`matchedBy='rule'`, `confidence=0.5`). Deterministic ids keep `factHash` reproducible and
+  let one vendor be queried across departments without a central resolution step. Real
+  resolution (UEI/EIN authority) arrives in Phase 1. (S3)
+- **D18 — Per-source classification schemes.** `us_ca_department` and `us_ca_acquisition_type`
+  are added to the closed `SchemeId` enum and assigned with `assignedBy='source'` — the
+  government's own coding, not an invented taxonomy. Generic `department` stays available for
+  later cross-jurisdiction normalization. (S3)
+- **D19 — HTTP record/replay for offline fixtures.** The SDK fetch layer runs live, records to
+  a fixture dir (`OUTLAYS_RECORD_DIR`), or replays from one (`OUTLAYS_REPLAY_DIR`, used by CI —
+  never the network). Fixtures are content-addressed bodies + a URL→file index. A page cap
+  (`OUTLAYS_MAX_PAGES`) keeps recorded fixtures small; replay sets the same cap. (S3)
 - **D15 — `resultHash` is deterministic over the fact set.** An adapter's `--out` document is
   `AdapterOutput` = `{ envelope, facts, entities?, entityAliases? }`. `envelope.resultHash` =
   SHA-256 over RFC 8785 (JCS) canonical JSON of `facts` after (a) dropping volatile fields
