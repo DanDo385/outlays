@@ -1,0 +1,182 @@
+{
+  "acquisition_type: NON-IT Goods": {
+    "cofogCode": "unmapped",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#mapping-policy",
+    "note": "Acquisition type describes purchased input, not government function. Requires department, program, commodity, or item context before COFOG assignment."
+  },
+  "acquisition_type: IT Goods": {
+    "cofogCode": "unmapped",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#mapping-policy",
+    "note": "IT goods can support any function. Do not classify as COFOG 01 merely because it is administrative technology."
+  },
+  "acquisition_type: NON-IT Services": {
+    "cofogCode": "unmapped",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#mapping-policy",
+    "note": "Service procurement is an input category. Function depends on department/program/purpose."
+  },
+  "acquisition_type: IT Services": {
+    "cofogCode": "unmapped",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#mapping-policy",
+    "note": "IT services can support any function. Requires joined context."
+  },
+  "acquisition_type: IT Telecommunications": {
+    "cofogCode": "unmapped",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#mapping-policy",
+    "note": "Telecommunications procurement is not itself a government function. Requires joined context."
+  },
+  "department: Corrections and Rehabilitation, Department of": {
+    "cofogCode": "03",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Corrections/prisons align with public order and safety. Healthcare inside corrections may need secondary health tags but department function is public order/safety."
+  },
+  "department: Consumer Affairs, Department of": {
+    "cofogCode": "01",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Regulatory/general administration function inferred from department name only. Needs program-level confirmation."
+  },
+  "department: Correctional Health Care Services": {
+    "cofogCode": "07",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Health-care delivery function is explicit in source department name, though institutional setting is corrections."
+  },
+  "department: Transportation, Department of": {
+    "cofogCode": "04",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Transportation aligns with economic affairs / transport."
+  },
+  "department: Water Resources, Department of": {
+    "cofogCode": "06",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Water resources may span housing/community amenities, environmental protection, and economic affairs. Department-level mapping is weak."
+  },
+  "department: Fish and Wildlife, Department of": {
+    "cofogCode": "05",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Wildlife conservation aligns with environmental protection."
+  },
+  "department: Forestry and Fire Protection, Department of": {
+    "cofogCode": "03",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Fire protection aligns with public order/safety, while forestry/natural-resource work can align with environmental protection. Needs program split."
+  },
+  "department: State Hospitals, Department of": {
+    "cofogCode": "07",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Hospital/health function inferred from department name."
+  },
+  "department: General Services, Department of": {
+    "cofogCode": "01",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Central administrative/general-services function."
+  },
+  "department: Veterans Affairs, Department of": {
+    "cofogCode": "10",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Veterans services can include social protection, health, housing, and memorial functions. Department-level mapping is weak; program split needed."
+  },
+  "department: Franchise Tax Board": {
+    "cofogCode": "01",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Tax administration aligns with general public services."
+  },
+  "department: Parks & Recreation, Department of": {
+    "cofogCode": "08",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Parks/recreation aligns with recreation, culture and religion."
+  },
+  "department: Industrial Relations, Department of": {
+    "cofogCode": "04",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Labor/industrial regulation inferred as economic affairs, but department programs may include public safety and social protection components."
+  },
+  "department: Developmental Services, Department of": {
+    "cofogCode": "10",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Developmental disability services align primarily with social protection; health components may need secondary tagging."
+  },
+  "department: Statewide Health Planning & Development, Office of": {
+    "cofogCode": "07",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Health planning/development aligns with health."
+  },
+  "department: Water Resources Control Board, State": {
+    "cofogCode": "05",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Water quality/regulation aligns with environmental protection."
+  },
+  "department: Pesticide Regulation, Department of": {
+    "cofogCode": "05",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Pesticide regulation has environmental/public-health/agricultural aspects. Environmental protection is a tentative department-level assignment."
+  },
+  "department: Conservation Corps, California": {
+    "cofogCode": "05",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Conservation suggests environmental protection, but youth/employment components may fall under social protection or economic affairs."
+  },
+  "department: Military Department": {
+    "cofogCode": "02",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Military function suggests defence, but state emergency/disaster missions may map to public order/safety. Program split needed."
+  },
+  "department: Air Resources Board": {
+    "cofogCode": "05",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Air-quality regulation aligns with environmental protection."
+  },
+  "department: Health & Human Services Agency": {
+    "cofogCode": "unmapped",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#mapping-policy",
+    "note": "Agency spans health and social protection. Department-level mapping would obscure real split."
+  },
+  "department: Highway Patrol, California": {
+    "cofogCode": "03",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Police/highway patrol aligns with public order and safety."
+  },
+  "department: Food and Agriculture, Department of": {
+    "cofogCode": "04",
+    "confidence": "medium",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Agriculture aligns with economic affairs."
+  },
+  "department: Motor Vehicles, Department of": {
+    "cofogCode": "04",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Transport administration aligns with economic affairs, but some enforcement/identity functions may differ."
+  },
+  "department: Employment Development Department": {
+    "cofogCode": "10",
+    "confidence": "low",
+    "basis": "docs/cofog-references.md#reference-1--eurostat-cofog-manual",
+    "note": "Unemployment/social insurance functions suggest social protection, while labor-market programs may map to economic affairs. Program split needed."
+  }
+}
