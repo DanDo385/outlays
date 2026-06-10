@@ -1,0 +1,36 @@
+# Node
+node_modules/
+dist/
+*.tsbuildinfo
+.next/
+out/
+
+# Go
+/core/bin/
+*.test
+*.out
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+.uv/
+py/**/dist/
+py/**/*.egg-info/
+
+# Foundry
+contracts/out/
+contracts/cache/
+contracts/broadcast/
+
+# Env / secrets
+.env
+.env.local
+*.local
+
+# Object-store / data scratch (fixtures are committed explicitly)
+/tmp-raw/
+*.parquet
+
+# OS
+.DS_Store

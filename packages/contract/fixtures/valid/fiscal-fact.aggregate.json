@@ -1,0 +1,11 @@
+{
+  "jurisdiction": "us-ca",
+  "fiscalYear": "2024-25",
+  "flow": "spending",
+  "grain": "aggregate",
+  "amount": "98765432.0000",
+  "currency": "USD",
+  "description": "Published department total (coarse grain; no single source row, so no rawSha256 required)",
+  "derivationQuery": "SELECT sum(total_price) FROM published_budget WHERE department = 'Department of General Services'",
+  "factHash": "0f1e2d3c4b5a69788796a5b4c3d2e1f009182736455463728190a1b2c3d4e5f6"
+}

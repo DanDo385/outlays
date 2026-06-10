@@ -1,0 +1,20 @@
+{
+  "envelopeVersion": "1",
+  "adapterId": "us-ca-procurement",
+  "adapterVersion": "0.1.0",
+  "runId": "3f2504e0-4f89-41d3-9a0c-0305e82c3301",
+  "fetchedAt": "2026-06-09T18:00:00Z",
+  "rawSnapshots": [
+    {
+      "sha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+      "url": "https://data.ca.gov/api/3/action/datastore_search?resource_id=bb82edc5-9c78-44e2-8947-68ece26197c5",
+      "bytes": 1048576,
+      "httpStatus": 200
+    }
+  ],
+  "jurisdiction": "us-ca",
+  "fiscalYear": "2024-25",
+  "resultHash": "9f86d081884c7d659a2feaa0c55ad015a3bf4f1b2b0b822cd15d6c15b0f00a08",
+  "signature": null,
+  "signerKeyId": null
+}

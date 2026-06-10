@@ -1,0 +1,5 @@
+packages:
+  - "packages/contract"
+  - "packages/adapter-sdk-ts"
+  - "packages/adapters/*"
+  - "packages/web"

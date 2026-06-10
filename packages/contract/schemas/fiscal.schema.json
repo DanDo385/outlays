@@ -1,0 +1,262 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://outlays.org/schemas/fiscal.schema.json",
+  "title": "OutlaysContract",
+  "description": "Canonical cross-language contract for Outlays. Single source of truth; language types are generated from this file. Wire format is camelCase; storage (DDL) is snake_case. See ARCHITECTURE.md Sections 3-5.",
+  "type": "object",
+  "$defs": {
+    "Money": {
+      "title": "Money",
+      "description": "Monetary amount as a decimal string. JS number / floats forbidden (Hard Rule 2).",
+      "type": "string",
+      "pattern": "^-?\\d{1,18}(\\.\\d{1,4})?$"
+    },
+    "Iso4217": {
+      "title": "Iso4217",
+      "description": "ISO 4217 currency code.",
+      "type": "string",
+      "pattern": "^[A-Z]{3}$"
+    },
+    "FiscalYear": {
+      "title": "FiscalYear",
+      "description": "Fiscal year token (Hard Rule 8): YYYY or YYYY-YY.",
+      "type": "string",
+      "pattern": "^\\d{4}(-\\d{2})?$"
+    },
+    "Sha256": {
+      "title": "Sha256",
+      "description": "Lowercase hex SHA-256 digest.",
+      "type": "string",
+      "pattern": "^[a-f0-9]{64}$"
+    },
+    "Uuid": {
+      "title": "Uuid",
+      "type": "string",
+      "format": "uuid",
+      "pattern": "^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$"
+    },
+    "Flow": {
+      "title": "Flow",
+      "type": "string",
+      "enum": ["revenue", "spending"]
+    },
+    "Grain": {
+      "title": "Grain",
+      "type": "string",
+      "enum": ["transaction", "award", "aggregate"]
+    },
+    "EntityKind": {
+      "title": "EntityKind",
+      "type": "string",
+      "enum": ["government", "vendor", "nonprofit", "individual", "unknown"]
+    },
+    "AssignedBy": {
+      "title": "AssignedBy",
+      "type": "string",
+      "enum": ["source", "rule", "model", "human"]
+    },
+    "SchemeId": {
+      "title": "SchemeId",
+      "description": "Known classification schemes. Closed set: an unknown scheme is rejected (mirrors the DB FK to classification_scheme). New per-source schemes are added here as the contract evolves.",
+      "type": "string",
+      "enum": [
+        "cofog",
+        "object_class",
+        "department",
+        "fund",
+        "program",
+        "recipient_type",
+        "tag"
+      ]
+    },
+    "SourceRef": {
+      "title": "SourceRef",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jurisdiction", "dataset", "resourceId", "derivationQuery", "pulledAt", "rawSha256"],
+      "properties": {
+        "jurisdiction": { "type": "string" },
+        "dataset": { "type": "string" },
+        "resourceId": { "type": "string" },
+        "derivationQuery": { "type": "string" },
+        "pulledAt": { "type": "string", "format": "date-time" },
+        "rawSha256": { "$ref": "#/$defs/Sha256" }
+      }
+    },
+    "Entity": {
+      "title": "Entity",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "canonicalName"],
+      "properties": {
+        "entityId": { "$ref": "#/$defs/Uuid" },
+        "kind": { "$ref": "#/$defs/EntityKind" },
+        "canonicalName": { "type": "string", "minLength": 1 },
+        "uei": { "type": "string" },
+        "ein": { "type": "string" },
+        "jurisdiction": { "type": "string" }
+      }
+    },
+    "EntityAlias": {
+      "title": "EntityAlias",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["nameRaw", "matchedBy", "source"],
+      "properties": {
+        "aliasId": { "$ref": "#/$defs/Uuid" },
+        "entityId": { "$ref": "#/$defs/Uuid" },
+        "nameRaw": { "type": "string", "minLength": 1 },
+        "matchedBy": { "type": "string", "enum": ["identifier", "rule", "model", "human"] },
+        "confidence": { "type": "number" },
+        "source": { "type": "object" }
+      }
+    },
+    "ClassificationAssignment": {
+      "title": "ClassificationAssignment",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemeId", "code", "assignedBy", "version"],
+      "properties": {
+        "assignmentId": { "$ref": "#/$defs/Uuid" },
+        "factId": { "$ref": "#/$defs/Uuid" },
+        "schemeId": { "$ref": "#/$defs/SchemeId" },
+        "code": { "type": "string", "minLength": 1 },
+        "assignedBy": { "$ref": "#/$defs/AssignedBy" },
+        "confidence": { "type": "number" },
+        "basis": { "type": "string" },
+        "version": { "type": "integer", "minimum": 1 }
+      },
+      "if": { "properties": { "assignedBy": { "enum": ["rule", "model"] } }, "required": ["assignedBy"] },
+      "then": { "required": ["basis"] }
+    },
+    "FiscalFact": {
+      "title": "FiscalFact",
+      "description": "The atom. Mirrors fiscal_fact. Provenance required (Hard Rule 1): derivationQuery always; rawSha256 for transaction/award grain. amount is a decimal string (Hard Rule 2).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jurisdiction", "fiscalYear", "flow", "grain", "amount", "currency", "derivationQuery", "factHash"],
+      "properties": {
+        "factId": { "$ref": "#/$defs/Uuid" },
+        "runId": { "$ref": "#/$defs/Uuid" },
+        "jurisdiction": { "type": "string" },
+        "fiscalYear": { "$ref": "#/$defs/FiscalYear" },
+        "flow": { "$ref": "#/$defs/Flow" },
+        "grain": { "$ref": "#/$defs/Grain" },
+        "payerEntity": { "$ref": "#/$defs/Uuid" },
+        "payeeEntity": { "$ref": "#/$defs/Uuid" },
+        "amount": { "$ref": "#/$defs/Money" },
+        "currency": { "$ref": "#/$defs/Iso4217" },
+        "occurredOn": { "type": "string", "format": "date" },
+        "description": { "type": "string" },
+        "rawSha256": { "$ref": "#/$defs/Sha256" },
+        "derivationQuery": { "type": "string", "minLength": 1 },
+        "factHash": { "$ref": "#/$defs/Sha256" },
+        "supersedes": { "$ref": "#/$defs/Uuid" },
+        "assignments": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ClassificationAssignment" }
+        }
+      },
+      "if": { "properties": { "grain": { "enum": ["transaction", "award"] } } },
+      "then": { "required": ["rawSha256"] }
+    },
+    "ControlTotal": {
+      "title": "ControlTotal",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jurisdiction", "fiscalYear", "flow", "officialTotal", "rawSha256", "derivationQuery"],
+      "properties": {
+        "jurisdiction": { "type": "string" },
+        "fiscalYear": { "$ref": "#/$defs/FiscalYear" },
+        "flow": { "$ref": "#/$defs/Flow" },
+        "officialTotal": { "$ref": "#/$defs/Money" },
+        "rawSha256": { "$ref": "#/$defs/Sha256" },
+        "derivationQuery": { "type": "string", "minLength": 1 }
+      }
+    },
+    "RawSnapshotRef": {
+      "title": "RawSnapshotRef",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["sha256", "url", "bytes", "httpStatus"],
+      "properties": {
+        "sha256": { "$ref": "#/$defs/Sha256" },
+        "url": { "type": "string" },
+        "bytes": { "type": "integer", "minimum": 0 },
+        "httpStatus": { "type": "integer" }
+      }
+    },
+    "IngestionEnvelope": {
+      "title": "IngestionEnvelope",
+      "description": "Result of one adapter run. signature/signerKeyId are present now (null) so Phase-2 federated signed submissions need no schema rework (Decision D6).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "envelopeVersion",
+        "adapterId",
+        "adapterVersion",
+        "runId",
+        "fetchedAt",
+        "rawSnapshots",
+        "jurisdiction",
+        "fiscalYear",
+        "resultHash",
+        "signature",
+        "signerKeyId"
+      ],
+      "properties": {
+        "envelopeVersion": { "const": "1" },
+        "adapterId": { "type": "string", "minLength": 1 },
+        "adapterVersion": { "type": "string", "minLength": 1 },
+        "runId": { "$ref": "#/$defs/Uuid" },
+        "fetchedAt": { "type": "string", "format": "date-time" },
+        "rawSnapshots": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/RawSnapshotRef" }
+        },
+        "jurisdiction": { "type": "string" },
+        "fiscalYear": { "$ref": "#/$defs/FiscalYear" },
+        "resultHash": { "$ref": "#/$defs/Sha256" },
+        "signature": { "type": ["string", "null"] },
+        "signerKeyId": { "type": ["string", "null"] }
+      }
+    },
+    "FiscalNodeView": {
+      "title": "FiscalNodeView",
+      "description": "One level of a computed category tree (API payload only, NOT storage).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["schemeId", "code", "label", "amount", "currency", "factCount"],
+      "properties": {
+        "schemeId": { "type": "string" },
+        "code": { "type": "string" },
+        "label": { "type": "string" },
+        "amount": { "$ref": "#/$defs/Money" },
+        "currency": { "$ref": "#/$defs/Iso4217" },
+        "factCount": { "type": "integer", "minimum": 0 },
+        "hasChildren": { "type": "boolean" }
+      }
+    },
+    "FiscalYearView": {
+      "title": "FiscalYearView",
+      "description": "A jurisdiction-year view over one scheme/flow (API payload only, NOT storage).",
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["jurisdiction", "fiscalYear", "flow", "schemeId", "total", "currency", "nodes"],
+      "properties": {
+        "jurisdiction": { "type": "string" },
+        "fiscalYear": { "$ref": "#/$defs/FiscalYear" },
+        "flow": { "$ref": "#/$defs/Flow" },
+        "schemeId": { "type": "string" },
+        "path": { "type": "array", "items": { "type": "string" } },
+        "total": { "$ref": "#/$defs/Money" },
+        "currency": { "$ref": "#/$defs/Iso4217" },
+        "unmapped": { "$ref": "#/$defs/Money" },
+        "nodes": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/FiscalNodeView" }
+        }
+      }
+    }
+  }
+}

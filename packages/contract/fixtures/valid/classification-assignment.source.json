@@ -1,0 +1,7 @@
+{
+  "schemeId": "department",
+  "code": "DGS",
+  "assignedBy": "source",
+  "version": 1,
+  "basis": "Department field as coded by data.ca.gov Purchase Order Data"
+}

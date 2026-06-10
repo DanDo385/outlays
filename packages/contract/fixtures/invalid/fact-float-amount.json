@@ -1,0 +1,11 @@
+{
+  "jurisdiction": "us-ca",
+  "fiscalYear": "2024-25",
+  "flow": "spending",
+  "grain": "transaction",
+  "amount": 12345.67,
+  "currency": "USD",
+  "rawSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855",
+  "derivationQuery": "SELECT * FROM datastore_search WHERE _id = 42",
+  "factHash": "1a2b3c4d5e6f7a8b9c0d1e2f3a4b5c6d7e8f9a0b1c2d3e4f5a6b7c8d9e0f1a2b"
+}

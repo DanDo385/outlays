@@ -1,0 +1,12 @@
+{
+  "description": "Shared conformance fixtures for contract validation. Every language validator runs these and must agree: valid==true fixtures pass, valid==false fixtures fail against their $def.",
+  "cases": [
+    { "file": "valid/fiscal-fact.transaction.json", "def": "FiscalFact", "valid": true },
+    { "file": "valid/fiscal-fact.aggregate.json", "def": "FiscalFact", "valid": true },
+    { "file": "valid/classification-assignment.source.json", "def": "ClassificationAssignment", "valid": true },
+    { "file": "valid/ingestion-envelope.json", "def": "IngestionEnvelope", "valid": true },
+    { "file": "invalid/fact-float-amount.json", "def": "FiscalFact", "valid": false },
+    { "file": "invalid/fact-missing-rawsha-transaction.json", "def": "FiscalFact", "valid": false },
+    { "file": "invalid/assignment-unknown-scheme.json", "def": "ClassificationAssignment", "valid": false }
+  ]
+}
