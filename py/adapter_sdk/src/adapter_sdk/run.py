@@ -27,7 +27,7 @@ from adapter_sdk.snapshot import RawSnapshotRef, write_snapshot
 FISCAL_YEAR = re.compile(r"^\d{4}(-\d{2})?$")
 
 ENVELOPE_VERSION = "1"
-CONTRACT_VERSION = "0.1.0"
+CONTRACT_VERSION = "0.2.0"
 
 
 class SourceUnavailableError(Exception):

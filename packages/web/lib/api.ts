@@ -2,9 +2,9 @@
 // server components / route handlers — the browser only ever talks to this Next app, and
 // no LLM is called anywhere (Section 5: no LLM calls from the web client).
 //
-// Payload shapes live in lib/types.ts and mirror docs/openapi.yaml, which is authoritative
-// for the read API; the contract's FiscalYearView differs slightly (per-node schemeId) and
-// is not what the API emits — noted in NOTES.md.
+// Payload shapes live in lib/types.ts: view types come from the contract package (the
+// single source of truth, D26); the rest mirror docs/openapi.yaml, which describes the
+// endpoints the contract does not model.
 
 import "server-only";
 

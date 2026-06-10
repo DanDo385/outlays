@@ -156,28 +156,25 @@ export interface AdapterOutput {
   entityAliases?: EntityAlias[];
 }
 /**
- * One level of a computed category tree (API payload only, NOT storage).
+ * One row of a computed view: a scheme code (or entity id, or __unclassified__) with its rolled-up amount (API payload only, NOT storage). The scheme is carried once on the enclosing FiscalYearView.
  */
 export interface FiscalNodeView {
-  schemeId: string;
   code: string;
   label: string;
   amount: Money;
   currency: Iso4217;
   factCount: number;
-  hasChildren?: boolean;
 }
 /**
- * A jurisdiction-year view over one scheme/flow (API payload only, NOT storage).
+ * A one-level jurisdiction-year rollup over one scheme/flow (API payload only, NOT storage). unmapped is the total of facts with no assignment in the scheme, also surfaced as the __unclassified__ node — node amounts always reconcile to total (D24).
  */
 export interface FiscalYearView {
   jurisdiction: string;
   fiscalYear: FiscalYear;
   flow: Flow;
   schemeId: string;
-  path?: string[];
   total: Money;
   currency: Iso4217;
-  unmapped?: Money;
+  unmapped: Money;
   nodes: FiscalNodeView[];
 }

@@ -247,32 +247,29 @@
     },
     "FiscalNodeView": {
       "title": "FiscalNodeView",
-      "description": "One level of a computed category tree (API payload only, NOT storage).",
+      "description": "One row of a computed view: a scheme code (or entity id, or __unclassified__) with its rolled-up amount (API payload only, NOT storage). The scheme is carried once on the enclosing FiscalYearView.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["schemeId", "code", "label", "amount", "currency", "factCount"],
+      "required": ["code", "label", "amount", "currency", "factCount"],
       "properties": {
-        "schemeId": { "type": "string" },
         "code": { "type": "string" },
         "label": { "type": "string" },
         "amount": { "$ref": "#/$defs/Money" },
         "currency": { "$ref": "#/$defs/Iso4217" },
-        "factCount": { "type": "integer", "minimum": 0 },
-        "hasChildren": { "type": "boolean" }
+        "factCount": { "type": "integer", "minimum": 0 }
       }
     },
     "FiscalYearView": {
       "title": "FiscalYearView",
-      "description": "A jurisdiction-year view over one scheme/flow (API payload only, NOT storage).",
+      "description": "A one-level jurisdiction-year rollup over one scheme/flow (API payload only, NOT storage). unmapped is the total of facts with no assignment in the scheme, also surfaced as the __unclassified__ node — node amounts always reconcile to total (D24).",
       "type": "object",
       "additionalProperties": false,
-      "required": ["jurisdiction", "fiscalYear", "flow", "schemeId", "total", "currency", "nodes"],
+      "required": ["jurisdiction", "fiscalYear", "flow", "schemeId", "total", "currency", "unmapped", "nodes"],
       "properties": {
         "jurisdiction": { "type": "string" },
         "fiscalYear": { "$ref": "#/$defs/FiscalYear" },
         "flow": { "$ref": "#/$defs/Flow" },
         "schemeId": { "type": "string" },
-        "path": { "type": "array", "items": { "type": "string" } },
         "total": { "$ref": "#/$defs/Money" },
         "currency": { "$ref": "#/$defs/Iso4217" },
         "unmapped": { "$ref": "#/$defs/Money" },

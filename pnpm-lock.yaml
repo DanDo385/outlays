@@ -84,6 +84,9 @@ importers:
 
   packages/web:
     dependencies:
+      '@outlays/contract':
+        specifier: workspace:*
+        version: link:../contract
       next:
         specifier: ^15.3.4
         version: 15.5.19(react-dom@19.2.7(react@19.2.7))(react@19.2.7)

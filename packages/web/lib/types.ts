@@ -1,29 +1,16 @@
-// API payload types shared by server pages and client components. Shapes mirror
-// docs/openapi.yaml (the served read-API payloads). Money is always a decimal string on
-// the wire — never parse it into a JS number (Hard Rule 2).
+// API payload types shared by server pages and client components. View shapes come from
+// the contract package — the single source of truth (D26); the remaining shapes mirror
+// docs/openapi.yaml, which describes endpoints the contract does not model. Money is
+// always a decimal string on the wire — never parse it into a JS number (Hard Rule 2).
+
+import type { FiscalNodeView, FiscalYearView } from "@outlays/contract";
 
 export type Money = string;
 
 export const UNCLASSIFIED = "__unclassified__";
 
-export interface ViewNode {
-  code: string;
-  label: string;
-  amount: Money;
-  currency: string;
-  factCount: number;
-}
-
-export interface View {
-  jurisdiction: string;
-  fiscalYear: string;
-  flow: "spending" | "revenue";
-  schemeId: string;
-  total: Money;
-  currency: string;
-  unmapped: Money;
-  nodes: ViewNode[];
-}
+export type ViewNode = FiscalNodeView;
+export type View = FiscalYearView;
 
 export interface Coverage {
   jurisdiction: string;

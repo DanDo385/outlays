@@ -189,7 +189,9 @@ type FiscalFact struct {
 	Supersedes *Uuid `json:"supersedes,omitempty,omitzero" yaml:"supersedes,omitempty" mapstructure:"supersedes,omitempty"`
 }
 
-// One level of a computed category tree (API payload only, NOT storage).
+// One row of a computed view: a scheme code (or entity id, or __unclassified__)
+// with its rolled-up amount (API payload only, NOT storage). The scheme is carried
+// once on the enclosing FiscalYearView.
 type FiscalNodeView struct {
 	// Amount corresponds to the JSON schema field "amount".
 	Amount Money `json:"amount" yaml:"amount" mapstructure:"amount"`
@@ -203,14 +205,8 @@ type FiscalNodeView struct {
 	// FactCount corresponds to the JSON schema field "factCount".
 	FactCount int `json:"factCount" yaml:"factCount" mapstructure:"factCount"`
 
-	// HasChildren corresponds to the JSON schema field "hasChildren".
-	HasChildren *bool `json:"hasChildren,omitempty,omitzero" yaml:"hasChildren,omitempty" mapstructure:"hasChildren,omitempty"`
-
 	// Label corresponds to the JSON schema field "label".
 	Label string `json:"label" yaml:"label" mapstructure:"label"`
-
-	// SchemeId corresponds to the JSON schema field "schemeId".
-	SchemeId string `json:"schemeId" yaml:"schemeId" mapstructure:"schemeId"`
 }
 
 // Canonical cross-language contract for Outlays. Single source of truth; language
@@ -221,7 +217,10 @@ type FiscalSchemaJson map[string]interface{}
 // Fiscal year token (Hard Rule 8): YYYY or YYYY-YY.
 type FiscalYear string
 
-// A jurisdiction-year view over one scheme/flow (API payload only, NOT storage).
+// A one-level jurisdiction-year rollup over one scheme/flow (API payload only, NOT
+// storage). unmapped is the total of facts with no assignment in the scheme, also
+// surfaced as the __unclassified__ node — node amounts always reconcile to total
+// (D24).
 type FiscalYearView struct {
 	// Currency corresponds to the JSON schema field "currency".
 	Currency Iso4217 `json:"currency" yaml:"currency" mapstructure:"currency"`
@@ -238,9 +237,6 @@ type FiscalYearView struct {
 	// Nodes corresponds to the JSON schema field "nodes".
 	Nodes []FiscalNodeView `json:"nodes" yaml:"nodes" mapstructure:"nodes"`
 
-	// Path corresponds to the JSON schema field "path".
-	Path []string `json:"path,omitempty,omitzero" yaml:"path,omitempty" mapstructure:"path,omitempty"`
-
 	// SchemeId corresponds to the JSON schema field "schemeId".
 	SchemeId string `json:"schemeId" yaml:"schemeId" mapstructure:"schemeId"`
 
@@ -248,7 +244,7 @@ type FiscalYearView struct {
 	Total Money `json:"total" yaml:"total" mapstructure:"total"`
 
 	// Unmapped corresponds to the JSON schema field "unmapped".
-	Unmapped *Money `json:"unmapped,omitempty,omitzero" yaml:"unmapped,omitempty" mapstructure:"unmapped,omitempty"`
+	Unmapped Money `json:"unmapped" yaml:"unmapped" mapstructure:"unmapped"`
 }
 
 type Flow string

@@ -230,13 +230,11 @@ class FiscalNodeView(BaseModel):
     model_config = ConfigDict(
         extra="forbid",
     )
-    schemeId: str
     code: str
     label: str
     amount: Money
     currency: Iso4217
     factCount: int = Field(..., ge=0)
-    hasChildren: bool | None = None
 
 
 class FiscalYearView(BaseModel):
@@ -247,8 +245,7 @@ class FiscalYearView(BaseModel):
     fiscalYear: FiscalYear
     flow: Flow
     schemeId: str
-    path: list[str] | None = None
     total: Money
     currency: Iso4217
-    unmapped: Money | None = None
+    unmapped: Money
     nodes: list[FiscalNodeView]

@@ -234,7 +234,8 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
   (latest version) to avoid double counting. Views/coverage count only current (non-superseded)
   facts. All amounts are emitted as exact decimal strings (`::text`), never floats. `/v1/leads`
   returns only `status='published'` and rejects any other requested status. A hand-maintained
-  OpenAPI 3.1 document is committed at `docs/openapi.yaml`. (S6)
+  OpenAPI 3.1 document is committed at `docs/openapi.yaml`. (S6) *(The reading of this entry
+  under which the OpenAPI doc led the contract for view shapes is superseded by D26.)*
 - **D22 — Orchestrator verifies by re-derivation before persisting.** After running an adapter
   (`info` → `fetch`), the orchestrator validates the output against the `AdapterOutput` schema
   **and** recomputes `resultHash` from the facts (shared `verify` package), refusing to persist
@@ -287,6 +288,16 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
   `resultHash` independent of emit order and free of per-run noise, so the same fixtures
   reproduce the same hash — verified byte-identical across the TS SDK, Python SDK, and Go
   conformance harness. The SDKs and the harness MUST keep this rule in lockstep. (S2)
+- **D26 — The contract leads; OpenAPI describes.** `packages/contract` is the single source
+  of truth for every cross-language shape, including API response payloads
+  (`FiscalYearView` / `FiscalNodeView`); `docs/openapi.yaml` documents endpoints and must
+  follow the contract, never lead it. The S7 drift between the contract view types and the
+  served payload is resolved by amending the contract to the served shape (per-node
+  `schemeId` and `hasChildren` dropped — the scheme is carried once on the view; speculative
+  `path` dropped until multi-level drill exists; `unmapped` now required per D24's
+  reconciliation guarantee), regenerating all three languages, and bumping
+  `CONTRACT_VERSION` to 0.2.0. The web client's view types now come from the contract
+  package. Supersedes the contrary precedence reading of D24. (post-S7)
 - **D25 — Web UI is server-rendered; the browser never holds an unsourced or floated
   number.** `packages/web` is a Next.js App Router app in which every read-API fetch happens
   server-side (the provenance drawer goes through a pass-through proxy route), so the read API
