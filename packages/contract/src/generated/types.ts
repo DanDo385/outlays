@@ -116,11 +116,16 @@ export interface FiscalFact {
   supersedes?: Uuid;
   assignments?: ClassificationAssignment[];
 }
+/**
+ * An official published total for a jurisdiction-year-flow, used as the coverage denominator. scope is the explicit label for what coverage against this total means (e.g. 'procurement facts vs total budget') — it must name any scope mismatch between the ingested facts and this denominator so coverage never implies false precision.
+ */
 export interface ControlTotal {
   jurisdiction: string;
   fiscalYear: FiscalYear;
   flow: Flow;
   officialTotal: Money;
+  currency: Iso4217;
+  scope: string;
   rawSha256: Sha256;
   derivationQuery: string;
 }
@@ -154,6 +159,7 @@ export interface AdapterOutput {
   facts: FiscalFact[];
   entities?: Entity[];
   entityAliases?: EntityAlias[];
+  controlTotals?: ControlTotal[];
 }
 /**
  * One row of a computed view: a scheme code (or entity id, or __unclassified__) with its rolled-up amount (API payload only, NOT storage). The scheme is carried once on the enclosing FiscalYearView.

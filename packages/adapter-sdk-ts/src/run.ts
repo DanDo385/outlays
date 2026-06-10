@@ -4,7 +4,7 @@
 
 import { randomUUID } from "node:crypto";
 import { writeFile } from "node:fs/promises";
-import { validate, type FiscalFact, type Entity, type EntityAlias } from "@outlays/contract";
+import { validate, type FiscalFact, type Entity, type EntityAlias, type ControlTotal } from "@outlays/contract";
 import { ExitCode, SourceUnavailableError } from "./errors.js";
 import { computeFactHash, computeResultHash } from "./hash.js";
 import { httpGet, type HttpResponse } from "./http.js";
@@ -41,6 +41,8 @@ export interface FetchResult {
   facts: FactInput[];
   entities?: Entity[];
   entityAliases?: EntityAlias[];
+  /** Official published totals (coverage denominators) captured by this run, with provenance. */
+  controlTotals?: ControlTotal[];
 }
 
 export interface AdapterDefinition {
@@ -140,6 +142,7 @@ async function runFetch(def: AdapterDefinition, flags: Record<string, string>): 
     facts,
     ...(result.entities ? { entities: result.entities } : {}),
     ...(result.entityAliases ? { entityAliases: result.entityAliases } : {}),
+    ...(result.controlTotals ? { controlTotals: result.controlTotals } : {}),
   };
 
   const verdict = validate("AdapterOutput", doc);

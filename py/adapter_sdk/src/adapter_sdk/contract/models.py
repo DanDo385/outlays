@@ -185,6 +185,8 @@ class ControlTotal(BaseModel):
     fiscalYear: FiscalYear
     flow: Flow
     officialTotal: Money
+    currency: Iso4217
+    scope: str = Field(..., min_length=1)
     rawSha256: Sha256
     derivationQuery: str = Field(..., min_length=1)
 
@@ -224,6 +226,7 @@ class AdapterOutput(BaseModel):
     facts: list[FiscalFact]
     entities: list[Entity] | None = None
     entityAliases: list[EntityAlias] | None = None
+    controlTotals: list[ControlTotal] | None = None
 
 
 class FiscalNodeView(BaseModel):

@@ -221,3 +221,62 @@ the bottom.
   `raw/us-ca/purchase-order-data/2014-15/<sha>.bin` object key, source URL, and the
   derivation query pinning the row `_id`; payee drill shows the vendor-across-departments
   cross-cut.
+
+## post-S7 (contract alignment)
+
+- **Contract view types aligned to the served shape, precedence inverted (D26):** the S7
+  proposal was approved with the contract as the leader, not OpenAPI. `FiscalNodeView`
+  dropped per-node `schemeId` and `hasChildren` (the scheme is carried once on the view);
+  `FiscalYearView` dropped the speculative `path` and made `unmapped` required (D24's
+  reconciliation guarantee). All three languages regenerated; `CONTRACT_VERSION` 0.1.0 →
+  0.2.0 (TS `packages/contract/src/index.ts` + Python `adapter_sdk/run.py` + the package
+  version); drift guard green post-commit. `packages/web` now imports its view types from
+  `@outlays/contract`.
+- The drift guard "fails" locally on an uncommitted intentional schema change by design
+  (it diffs regenerated output against git) — run it after committing; determinism was
+  additionally checked by hashing two consecutive codegen runs.
+
+## S8
+
+- **Scope decision for the CA denominator (recorded per instruction).** The ingested
+  dataset is procurement-only (eSCPRS purchase orders, FY2012-15), so the honest
+  denominator would be an official procurement total. None is available machine-readably:
+  (a) data.ca.gov's `datastore_search_sql` has a function whitelist — `SUM(CAST(...))` /
+  `regexp_replace` / `NULLIF` all return 403 "Not authorized to call function", and `Total
+  Price` is text, so the source cannot compute its own parsed-money total (plain `count(*)`
+  works: FY2014-15 has 115,969 rows — our replay slice of 989 facts is one page of ~116);
+  (b) `package_search` finds no DGS procurement-report or budget-totals dataset. Therefore
+  the **full enacted-budget figure** is ingested and the coverage metric is explicitly
+  labeled **"procurement facts vs total budget"** (the `scope` column/field, D27) so the
+  badge never implies the denominator matches the dataset's scope.
+- **The official figure:** 2014 Budget Act, Full Budget Summary
+  (`https://ebudget.ca.gov/2014-15/pdf/Enacted/BudgetSummary/FullBudgetSummary.pdf`,
+  774,364 bytes, sha256 `daf0be25…`), Figure SUM-02 "2014-15 Total State Expenditures by
+  Agency": General $107,987M + Special $44,324M + Bond $4,046M = **$156,357M** →
+  `officialTotal 156357000000.0000`. The figure is a reviewed in-source constant in the new
+  `us-ca-budget` adapter; the document is fetched and hashed at run time so the
+  transcription is verifiable against the stored bytes. (The PDF is deflate-compressed, so
+  the adapter cannot cheaply assert the string appears in the raw bytes — verification is
+  by a human against the locator, which names figure, row, column, and page.)
+- **`us-ca-budget` adapter** emits 0 facts + 1 `controlTotal`; conformance PASS in replay
+  (resultHash `4f53cda1…` = the deterministic empty-fact-set hash); fixture = the recorded
+  PDF (774KB, committed). Contract 0.2.0 → **0.3.0**: `AdapterOutput.controlTotals?`,
+  `ControlTotal` + required `currency`/`scope`. Migration `00005` adds the matching columns.
+  Both SDKs (TS + Python) pass `controlTotals` through for parity.
+- **`raw_sha256` on `control_total`** is nullable in the DDL but required by the contract;
+  the coverage query scans it as non-null (everything arrives via the pipeline). If a
+  hand-inserted row ever violated that, coverage would 500 — acceptable until corrections
+  for control totals are designed (same open question as the D20 lead workflow).
+- **Coverage endpoint** now returns `numeratorBasis` (aggregation description + `factsUrl`
+  where every fact carries its own provenance link) and `denominatorBasis` (scope, raw
+  hash, object-store key, source URL, locator). Ratio = round(n/d, 6) = **0.000247** →
+  badge "coverage 0.0247% — procurement facts vs total budget". OpenAPI documents the
+  shape.
+- **Found by the NOT NULL change:** `seedWorkflowRows` in the store integration test
+  swallowed its INSERT error (`_, _ =`), so the new NOT NULL columns silently emptied the
+  control_total trigger test; the seed now includes scope/currency and fails loudly.
+- **Acceptance evidence:** API integration test asserts numerator == view total,
+  denominator `156357000000.0000`, ratio `0.000247`, both bases present, scope label
+  exact, and the denominator's `storageKey` exists in MinIO. Headless-Chromium walk (12
+  checks, all green) including the badge rendering the honest low number with the scope
+  label in the masthead.

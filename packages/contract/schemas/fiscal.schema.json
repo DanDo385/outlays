@@ -164,14 +164,17 @@
     },
     "ControlTotal": {
       "title": "ControlTotal",
+      "description": "An official published total for a jurisdiction-year-flow, used as the coverage denominator. scope is the explicit label for what coverage against this total means (e.g. 'procurement facts vs total budget') — it must name any scope mismatch between the ingested facts and this denominator so coverage never implies false precision.",
       "type": "object",
       "additionalProperties": false,
-      "required": ["jurisdiction", "fiscalYear", "flow", "officialTotal", "rawSha256", "derivationQuery"],
+      "required": ["jurisdiction", "fiscalYear", "flow", "officialTotal", "currency", "scope", "rawSha256", "derivationQuery"],
       "properties": {
         "jurisdiction": { "type": "string" },
         "fiscalYear": { "$ref": "#/$defs/FiscalYear" },
         "flow": { "$ref": "#/$defs/Flow" },
         "officialTotal": { "$ref": "#/$defs/Money" },
+        "currency": { "$ref": "#/$defs/Iso4217" },
+        "scope": { "type": "string", "minLength": 1 },
         "rawSha256": { "$ref": "#/$defs/Sha256" },
         "derivationQuery": { "type": "string", "minLength": 1 }
       }
@@ -242,6 +245,10 @@
         "entityAliases": {
           "type": "array",
           "items": { "$ref": "#/$defs/EntityAlias" }
+        },
+        "controlTotals": {
+          "type": "array",
+          "items": { "$ref": "#/$defs/ControlTotal" }
         }
       }
     },

@@ -49,7 +49,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
   - ACCEPT: pivot the same CA spending across three dimensions and open a real PO-level
     provenance drawer from the UI.
 
-- [ ] **S8 — Control totals + coverage.** Ingest CA official enacted-budget total as
+- [x] **S8 — Control totals + coverage.** Ingest CA official enacted-budget total as
     `control_total` with provenance; coverage endpoint + badge wiring.
   - ACCEPT: coverage returns numerator and denominator each with provenance links; the
     honest low number renders in the UI.

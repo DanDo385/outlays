@@ -10,6 +10,9 @@ import "time"
 // RFC 8785 (JCS) canonical JSON of the facts, sorted by factHash — deterministic
 // across runs.
 type AdapterOutput struct {
+	// ControlTotals corresponds to the JSON schema field "controlTotals".
+	ControlTotals []ControlTotal `json:"controlTotals,omitempty,omitzero" yaml:"controlTotals,omitempty" mapstructure:"controlTotals,omitempty"`
+
 	// Entities corresponds to the JSON schema field "entities".
 	Entities []Entity `json:"entities,omitempty,omitzero" yaml:"entities,omitempty" mapstructure:"entities,omitempty"`
 
@@ -56,7 +59,15 @@ type ClassificationAssignment struct {
 	Version int `json:"version" yaml:"version" mapstructure:"version"`
 }
 
+// An official published total for a jurisdiction-year-flow, used as the coverage
+// denominator. scope is the explicit label for what coverage against this total
+// means (e.g. 'procurement facts vs total budget') — it must name any scope
+// mismatch between the ingested facts and this denominator so coverage never
+// implies false precision.
 type ControlTotal struct {
+	// Currency corresponds to the JSON schema field "currency".
+	Currency Iso4217 `json:"currency" yaml:"currency" mapstructure:"currency"`
+
 	// DerivationQuery corresponds to the JSON schema field "derivationQuery".
 	DerivationQuery string `json:"derivationQuery" yaml:"derivationQuery" mapstructure:"derivationQuery"`
 
@@ -74,6 +85,9 @@ type ControlTotal struct {
 
 	// RawSha256 corresponds to the JSON schema field "rawSha256".
 	RawSha256 Sha256 `json:"rawSha256" yaml:"rawSha256" mapstructure:"rawSha256"`
+
+	// Scope corresponds to the JSON schema field "scope".
+	Scope string `json:"scope" yaml:"scope" mapstructure:"scope"`
 }
 
 type Entity struct {

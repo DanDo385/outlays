@@ -300,37 +300,84 @@ func FactProvenance(ctx context.Context, pool *pgxpool.Pool, factID string) (*Pr
 	return &p, nil
 }
 
-// Coverage is sum(transaction+award facts) / official_total for a jurisdiction-year.
-type Coverage struct {
-	Jurisdiction string  `json:"jurisdiction"`
-	FiscalYear   string  `json:"fiscalYear"`
-	Numerator    string  `json:"numerator"`
-	Denominator  *string `json:"denominator"`
-	Ratio        *string `json:"ratio"`
-	Currency     string  `json:"currency"`
+// NumeratorBasis is the provenance of the coverage numerator: the exact aggregation the API
+// ran, plus the facts listing where every underlying fact carries its own provenance link.
+type NumeratorBasis struct {
+	DerivationQuery string `json:"derivationQuery"`
+	FactsURL        string `json:"factsUrl"`
 }
 
-// CoverageFor computes coverage; denominator/ratio are null until a control_total exists (S8).
-func CoverageFor(ctx context.Context, pool *pgxpool.Pool, jur, year string) (*Coverage, error) {
-	c := &Coverage{Jurisdiction: jur, FiscalYear: year, Currency: "USD"}
-	if err := pool.QueryRow(ctx, `
-		SELECT COALESCE(sum(amount),0)::numeric(24,4)::text FROM fiscal_fact f
+// DenominatorBasis is the provenance of the coverage denominator: the control_total's scope
+// label and its raw-snapshot pointer (hash, object-store key, source URL, derivation).
+type DenominatorBasis struct {
+	Scope           string  `json:"scope"`
+	DerivationQuery string  `json:"derivationQuery"`
+	RawSha256       string  `json:"rawSha256"`
+	StorageKey      *string `json:"storageKey"`
+	SnapshotURL     *string `json:"snapshotUrl"`
+}
+
+// Coverage is sum(transaction+award facts) / official_total for a jurisdiction-year. Both
+// sides carry provenance; the denominator's scope labels what the comparison means (e.g.
+// "procurement facts vs total budget") so a low or scope-mismatched number is never dressed
+// up as precision.
+type Coverage struct {
+	Jurisdiction     string            `json:"jurisdiction"`
+	FiscalYear       string            `json:"fiscalYear"`
+	Numerator        string            `json:"numerator"`
+	NumeratorBasis   NumeratorBasis    `json:"numeratorBasis"`
+	Denominator      *string           `json:"denominator"`
+	DenominatorBasis *DenominatorBasis `json:"denominatorBasis"`
+	Ratio            *string           `json:"ratio"`
+	Currency         string            `json:"currency"`
+}
+
+const coverageNumeratorSQL = `SELECT COALESCE(sum(amount),0)::numeric(24,4)::text FROM fiscal_fact f
 		WHERE jurisdiction=$1 AND fiscal_year=$2 AND grain IN ('transaction','award')
-		  AND NOT EXISTS (SELECT 1 FROM fiscal_fact s WHERE s.supersedes = f.fact_id)`,
-		jur, year).Scan(&c.Numerator); err != nil {
+		  AND NOT EXISTS (SELECT 1 FROM fiscal_fact s WHERE s.supersedes = f.fact_id)`
+
+// CoverageFor computes coverage; denominator/ratio/denominatorBasis are null until a
+// control_total exists for the jurisdiction-year.
+func CoverageFor(ctx context.Context, pool *pgxpool.Pool, jur, year string) (*Coverage, error) {
+	c := &Coverage{
+		Jurisdiction: jur, FiscalYear: year, Currency: "USD",
+		NumeratorBasis: NumeratorBasis{
+			DerivationQuery: fmt.Sprintf(
+				"sum(amount) over current (non-superseded) transaction+award facts where jurisdiction=%q and fiscal_year=%q", jur, year),
+			FactsURL: fmt.Sprintf("/v1/facts?jurisdiction=%s&year=%s", jur, year),
+		},
+	}
+	if err := pool.QueryRow(ctx, coverageNumeratorSQL, jur, year).Scan(&c.Numerator); err != nil {
 		return nil, err
 	}
-	var denom *string
-	_ = pool.QueryRow(ctx, `
-		SELECT official_total::text FROM control_total
-		WHERE jurisdiction=$1 AND fiscal_year=$2 AND flow='spending'`, jur, year).Scan(&denom)
-	c.Denominator = denom
-	if denom != nil {
-		var ratio string
-		if err := pool.QueryRow(ctx, `SELECT CASE WHEN $2::numeric=0 THEN NULL ELSE round($1::numeric/$2::numeric, 6)::text END`,
-			c.Numerator, *denom).Scan(&ratio); err == nil {
-			c.Ratio = &ratio
-		}
+
+	var (
+		denom, scope, ctDerivation, rawSha string
+		storageKey, snapshotURL            *string
+	)
+	err := pool.QueryRow(ctx, `
+		SELECT ct.official_total::text, ct.scope, ct.derivation_query, ct.raw_sha256,
+		       rs.storage_key, rs.url
+		FROM control_total ct
+		LEFT JOIN raw_snapshot rs ON rs.sha256 = ct.raw_sha256
+		WHERE ct.jurisdiction=$1 AND ct.fiscal_year=$2 AND ct.flow='spending'`, jur, year,
+	).Scan(&denom, &scope, &ctDerivation, &rawSha, &storageKey, &snapshotURL)
+	if err == pgx.ErrNoRows {
+		return c, nil
+	}
+	if err != nil {
+		return nil, err
+	}
+
+	c.Denominator = &denom
+	c.DenominatorBasis = &DenominatorBasis{
+		Scope: scope, DerivationQuery: ctDerivation, RawSha256: rawSha,
+		StorageKey: storageKey, SnapshotURL: snapshotURL,
+	}
+	var ratio string
+	if rerr := pool.QueryRow(ctx, `SELECT CASE WHEN $2::numeric=0 THEN NULL ELSE round($1::numeric/$2::numeric, 6)::text END`,
+		c.Numerator, denom).Scan(&ratio); rerr == nil {
+		c.Ratio = &ratio
 	}
 	return c, nil
 }

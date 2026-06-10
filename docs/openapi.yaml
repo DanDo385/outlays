@@ -52,6 +52,37 @@ components:
         snapshotUrl: { type: [string, 'null'] }
         httpStatus: { type: [integer, 'null'] }
         bytes: { type: [integer, 'null'] }
+    Coverage:
+      type: object
+      required: [jurisdiction, fiscalYear, numerator, numeratorBasis, denominator, denominatorBasis, ratio, currency]
+      properties:
+        jurisdiction: { type: string }
+        fiscalYear: { type: string }
+        numerator:
+          $ref: '#/components/schemas/Money'
+          description: Sum of current transaction+award grain facts.
+        numeratorBasis:
+          type: object
+          description: Provenance of the numerator — the aggregation performed and the facts listing where each fact links to its own provenance.
+          required: [derivationQuery, factsUrl]
+          properties:
+            derivationQuery: { type: string }
+            factsUrl: { type: string }
+        denominator:
+          oneOf: [{ $ref: '#/components/schemas/Money' }, { type: 'null' }]
+          description: Official control total; null until one is ingested.
+        denominatorBasis:
+          type: [object, 'null']
+          description: Provenance of the denominator — the control total's scope label and raw-snapshot pointer.
+          required: [scope, derivationQuery, rawSha256]
+          properties:
+            scope: { type: string, description: "What coverage against this total means, e.g. 'procurement facts vs total budget' — names any scope mismatch." }
+            derivationQuery: { type: string }
+            rawSha256: { type: string }
+            storageKey: { type: [string, 'null'] }
+            snapshotUrl: { type: [string, 'null'] }
+        ratio: { type: [string, 'null'], description: numerator/denominator rounded to 6 places; null without a denominator. }
+        currency: { type: string }
     Error:
       type: object
       properties:
@@ -99,11 +130,19 @@ paths:
   /v1/{jur}/{year}/coverage:
     get:
       summary: Coverage = sum(transaction+award facts) / official control total
+      description: >
+        Numerator and denominator each carry provenance. The denominator's `scope` labels
+        what the comparison means (e.g. "procurement facts vs total budget") so a scope
+        mismatch between ingested facts and the official total is always stated explicitly.
       parameters:
         - { name: jur, in: path, required: true, schema: { type: string } }
         - { name: year, in: path, required: true, schema: { type: string, pattern: '^\d{4}(-\d{2})?$' } }
       responses:
-        '200': { description: "numerator always present; denominator/ratio null until a control_total is ingested (S8)" }
+        '200':
+          description: numerator always present; denominator/denominatorBasis/ratio null until a control_total is ingested
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Coverage' }
   /v1/entities:
     get:
       summary: Search entities by canonical-name substring

@@ -53,6 +53,8 @@ func TestIntegrationReadAPI(t *testing.T) {
 	root := filepath.Clean(filepath.Join(filepath.Dir(thisFile), "..", "..", ".."))
 	caCli := filepath.Join(root, "packages", "adapters", "us-ca-procurement", "dist", "cli.js")
 	fixtures := filepath.Join(root, "packages", "adapters", "us-ca-procurement", "fixtures", "replay")
+	budgetCli := filepath.Join(root, "packages", "adapters", "us-ca-budget", "dist", "cli.js")
+	budgetFixtures := filepath.Join(root, "packages", "adapters", "us-ca-budget", "fixtures", "replay")
 	node, nerr := exec.LookPath("node")
 	if _, e := os.Stat(caCli); e != nil || nerr != nil {
 		t.Skip("CA adapter not built or node missing")
@@ -79,6 +81,18 @@ func TestIntegrationReadAPI(t *testing.T) {
 		ExtraEnv: []string{"OUTLAYS_REPLAY_DIR=" + fixtures, "OUTLAYS_MAX_PAGES=1"},
 	}, "2014-15"); err != nil {
 		t.Fatalf("ingest: %v", err)
+	}
+
+	// Control total (S8): the budget adapter emits no facts, only the official total.
+	if _, err := os.Stat(budgetCli); err != nil {
+		t.Skip("budget adapter not built")
+	}
+	if _, err := ingest.RunYear(ctx, &ingest.Options{
+		AdapterCmd: []string{node, budgetCli}, Pool: app, Obj: obj,
+		Logger:   slog.New(slog.NewTextHandler(io.Discard, nil)),
+		ExtraEnv: []string{"OUTLAYS_REPLAY_DIR=" + budgetFixtures},
+	}, "2014-15"); err != nil {
+		t.Fatalf("ingest control total: %v", err)
 	}
 
 	ts := httptest.NewServer((&api.Server{Pool: app}).Router())
@@ -144,6 +158,34 @@ func TestIntegrationReadAPI(t *testing.T) {
 	}
 	if ok, err := obj.Exists(ctx, prov["storageKey"].(string)); err != nil || !ok {
 		t.Errorf("storageKey %v not in object store (exists=%v err=%v)", prov["storageKey"], ok, err)
+	}
+
+	// Coverage (S8): numerator and denominator each with provenance links; honest low ratio.
+	cov := get("/v1/us-ca/2014-15/coverage")
+	if cov["numerator"] != dept["total"] {
+		t.Errorf("coverage numerator %v != view total %v", cov["numerator"], dept["total"])
+	}
+	if cov["denominator"] != "156357000000.0000" {
+		t.Errorf("coverage denominator = %v, want 156357000000.0000", cov["denominator"])
+	}
+	if cov["ratio"] != "0.000247" {
+		t.Errorf("coverage ratio = %v, want 0.000247 (the honest low number)", cov["ratio"])
+	}
+	nb, _ := cov["numeratorBasis"].(map[string]any)
+	if nb == nil || nb["factsUrl"] == "" || nb["derivationQuery"] == "" {
+		t.Errorf("coverage numeratorBasis missing provenance: %v", cov["numeratorBasis"])
+	}
+	db, _ := cov["denominatorBasis"].(map[string]any)
+	if db == nil || db["rawSha256"] == "" || db["derivationQuery"] == "" {
+		t.Fatalf("coverage denominatorBasis missing provenance: %v", cov["denominatorBasis"])
+	}
+	if db["scope"] != "procurement facts vs total budget" {
+		t.Errorf("coverage scope = %v, want explicit scope label", db["scope"])
+	}
+	if key, _ := db["storageKey"].(string); key == "" {
+		t.Errorf("denominator storageKey missing")
+	} else if ok, err := obj.Exists(ctx, key); err != nil || !ok {
+		t.Errorf("denominator storageKey %v not in object store (exists=%v err=%v)", key, ok, err)
 	}
 
 	// Leads: published-only, empty for now.

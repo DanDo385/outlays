@@ -27,7 +27,7 @@ from adapter_sdk.snapshot import RawSnapshotRef, write_snapshot
 FISCAL_YEAR = re.compile(r"^\d{4}(-\d{2})?$")
 
 ENVELOPE_VERSION = "1"
-CONTRACT_VERSION = "0.2.0"
+CONTRACT_VERSION = "0.3.0"
 
 
 class SourceUnavailableError(Exception):
@@ -63,6 +63,8 @@ class FetchResult:
     facts: list[dict[str, Any]]
     entities: list[dict[str, Any]] | None = None
     entity_aliases: list[dict[str, Any]] | None = None
+    # Official published totals (coverage denominators) captured by this run, with provenance.
+    control_totals: list[dict[str, Any]] | None = None
 
 
 class AdapterDefinition(Protocol):
@@ -140,6 +142,8 @@ def _run_fetch(adapter: AdapterDefinition, flags: dict[str, str]) -> int:
         doc["entities"] = result.entities
     if result.entity_aliases is not None:
         doc["entityAliases"] = result.entity_aliases
+    if result.control_totals is not None:
+        doc["controlTotals"] = result.control_totals
 
     errs = errors_for("AdapterOutput", doc)
     if errs:

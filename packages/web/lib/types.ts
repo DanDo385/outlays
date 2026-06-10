@@ -12,11 +12,26 @@ export const UNCLASSIFIED = "__unclassified__";
 export type ViewNode = FiscalNodeView;
 export type View = FiscalYearView;
 
+export interface NumeratorBasis {
+  derivationQuery: string;
+  factsUrl: string;
+}
+
+export interface DenominatorBasis {
+  scope: string;
+  derivationQuery: string;
+  rawSha256: string;
+  storageKey: string | null;
+  snapshotUrl: string | null;
+}
+
 export interface Coverage {
   jurisdiction: string;
   fiscalYear: string;
   numerator: Money;
+  numeratorBasis: NumeratorBasis;
   denominator: Money | null;
+  denominatorBasis: DenominatorBasis | null;
   ratio: string | null;
   currency: string;
 }

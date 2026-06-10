@@ -2,12 +2,14 @@ import type { Coverage } from "@/lib/api";
 import { formatMoney, percentFromRatio } from "@/lib/decimal";
 
 /**
- * Coverage = ingested transaction+award facts / official control total. Until a
- * control_total is ingested (S8) the denominator is null — rendered honestly as
- * "coverage unknown", never as 100%.
+ * Coverage = ingested transaction+award facts / official control total. With no control
+ * total ingested the denominator is null — rendered honestly as "coverage unknown", never
+ * as 100%. With one, the badge always carries the control total's scope label (e.g.
+ * "procurement facts vs total budget") so a scope mismatch between the facts and the
+ * denominator is stated, never implied away.
  */
 export function CoverageBadge({ coverage }: { coverage: Coverage }) {
-  if (coverage.denominator === null || coverage.ratio === null) {
+  if (coverage.denominator === null || coverage.ratio === null || coverage.denominatorBasis === null) {
     return (
       <span
         className="badge badge-coverage-unknown"
@@ -17,12 +19,13 @@ export function CoverageBadge({ coverage }: { coverage: Coverage }) {
       </span>
     );
   }
+  const basis = coverage.denominatorBasis;
   return (
     <span
       className="badge badge-coverage-known"
-      title={`${formatMoney(coverage.numerator, coverage.currency)} of ${formatMoney(coverage.denominator, coverage.currency)} official total`}
+      title={`${formatMoney(coverage.numerator, coverage.currency)} ingested facts of ${formatMoney(coverage.denominator, coverage.currency)} official total. Denominator: ${basis.derivationQuery}`}
     >
-      coverage {percentFromRatio(coverage.ratio)} of official total
+      coverage {percentFromRatio(coverage.ratio)} — {basis.scope}
     </span>
   );
 }

@@ -28,6 +28,20 @@ type Document struct {
 	Facts         []Fact          `json:"facts"`
 	Entities      []Entity        `json:"entities"`
 	EntityAliases []Alias         `json:"entityAliases"`
+	ControlTotals []ControlTotal  `json:"controlTotals"`
+}
+
+// ControlTotal is an official published total used as the coverage denominator; scope labels
+// what coverage against it means (e.g. "procurement facts vs total budget").
+type ControlTotal struct {
+	Jurisdiction    string `json:"jurisdiction"`
+	FiscalYear      string `json:"fiscalYear"`
+	Flow            string `json:"flow"`
+	OfficialTotal   string `json:"officialTotal"`
+	Currency        string `json:"currency"`
+	Scope           string `json:"scope"`
+	RawSha256       string `json:"rawSha256"`
+	DerivationQuery string `json:"derivationQuery"`
 }
 
 type Envelope struct {
@@ -109,12 +123,13 @@ func FactID(factHash string) string { return uuid.NewSHA1(factNS, []byte(factHas
 
 // IngestResult summarizes what was written.
 type IngestResult struct {
-	RunID       string
-	Facts       int
-	Entities    int
-	Aliases     int
-	Assignments int
-	Snapshots   int
+	RunID         string
+	Facts         int
+	Entities      int
+	Aliases       int
+	Assignments   int
+	Snapshots     int
+	ControlTotals int
 }
 
 // Ingest persists a document: uploads raw snapshots to object storage, then writes all rows in
@@ -219,6 +234,22 @@ func Ingest(ctx context.Context, pool *pgxpool.Pool, obj *ObjectStore, doc *Docu
 		return nil, err
 	}
 
+	// 9. control totals (PK (jurisdiction, fiscal_year, flow) ⇒ idempotent insert-once).
+	for _, ct := range doc.ControlTotals {
+		total, perr := pgNumeric(ct.OfficialTotal)
+		if perr != nil {
+			return nil, fmt.Errorf("control total %q: %w", ct.OfficialTotal, perr)
+		}
+		if _, err := tx.Exec(ctx, `
+			INSERT INTO control_total (jurisdiction, fiscal_year, flow, official_total, currency, scope, raw_sha256, derivation_query)
+			VALUES ($1,$2,$3,$4,$5,$6,$7,$8)
+			ON CONFLICT (jurisdiction, fiscal_year, flow) DO NOTHING`,
+			ct.Jurisdiction, ct.FiscalYear, ct.Flow, total, ct.Currency, ct.Scope, ct.RawSha256, ct.DerivationQuery,
+		); err != nil {
+			return nil, fmt.Errorf("insert control_total: %w", err)
+		}
+	}
+
 	if err := tx.Commit(ctx); err != nil {
 		return nil, fmt.Errorf("commit: %w", err)
 	}
@@ -226,6 +257,7 @@ func Ingest(ctx context.Context, pool *pgxpool.Pool, obj *ObjectStore, doc *Docu
 	return &IngestResult{
 		RunID: env.RunID, Facts: len(factRows), Entities: len(doc.Entities),
 		Aliases: len(doc.EntityAliases), Assignments: len(assignRows), Snapshots: len(env.RawSnapshots),
+		ControlTotals: len(doc.ControlTotals),
 	}, nil
 }
 

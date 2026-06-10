@@ -207,10 +207,12 @@ func mustExec(t *testing.T, ctx context.Context, pool *pgxpool.Pool, sql string)
 
 func seedWorkflowRows(t *testing.T, ctx context.Context, owner *pgxpool.Pool, runID, sha, factHash string) {
 	t.Helper()
-	_, _ = owner.Exec(ctx, `
-		INSERT INTO control_total (jurisdiction, fiscal_year, flow, official_total, raw_sha256, derivation_query)
-		VALUES ('us-ca','2014-15','spending','1000000.0000',$1,'seed for trigger test')
-		ON CONFLICT (jurisdiction, fiscal_year, flow) DO NOTHING`, sha)
+	if _, err := owner.Exec(ctx, `
+		INSERT INTO control_total (jurisdiction, fiscal_year, flow, official_total, currency, scope, raw_sha256, derivation_query)
+		VALUES ('us-ca','2014-15','spending','1000000.0000','USD','seed scope',$1,'seed for trigger test')
+		ON CONFLICT (jurisdiction, fiscal_year, flow) DO NOTHING`, sha); err != nil {
+		t.Fatalf("seed control_total: %v", err)
+	}
 	factID := store.FactID(factHash)
 	_, _ = owner.Exec(ctx, `
 		INSERT INTO lead (rule_id, fact_ids, generated_query, status)

@@ -288,6 +288,19 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
   `resultHash` independent of emit order and free of per-run noise, so the same fixtures
   reproduce the same hash — verified byte-identical across the TS SDK, Python SDK, and Go
   conformance harness. The SDKs and the harness MUST keep this rule in lockstep. (S2)
+- **D27 — Control totals flow through the adapter pipeline, and every one carries a scope
+  label.** `AdapterOutput` gains optional `controlTotals[]` (contract 0.3.0); `ControlTotal`
+  gains required `currency` and `scope`, mirrored by migration 00005. A control-total adapter
+  may emit zero facts: the official figure is a **reviewed in-source constant** citing its
+  exact location in the source document, and the document is fetched and hashed at run time
+  so the transcription is verifiable against the stored raw bytes — the same provenance bar
+  as any fact. `scope` states what coverage against the denominator means; the coverage
+  endpoint returns `numeratorBasis` (aggregation + facts URL) and `denominatorBasis` (scope,
+  raw hash, object key, source URL, locator), and the UI badge always renders the scope
+  label. CA FY 2014-15 uses the full enacted-budget total (Figure SUM-02, $156,357M) labeled
+  "procurement facts vs total budget", because no procurement-scoped official total is
+  published machine-readably — the denominator deliberately does not match the dataset's
+  scope, and saying so is the point. (S8)
 - **D26 — The contract leads; OpenAPI describes.** `packages/contract` is the single source
   of truth for every cross-language shape, including API response payloads
   (`FiscalYearView` / `FiscalNodeView`); `docs/openapi.yaml` documents endpoints and must
