@@ -177,3 +177,47 @@ the bottom.
   --replay-dir … --max-pages 1` applied migrations and ingested 989 facts (slog JSON logs).
 - **Integration tests are tag-gated** (`//go:build integration`) and run serially (`-p 1`)
   because they reset the shared schema; plain `go test ./...` excludes them (D23).
+
+## S7
+
+- **`packages/web` placeholder replaced** by a Next.js 15 App Router app (React 19, TS
+  strict, no UI framework deps). All routes are `force-dynamic`, so `pnpm -r build` builds
+  the app with no stack running — CI needs no API. Server runs with `OUTLAYS_API_URL`
+  (default `http://localhost:8080`).
+- **All read-API fetches are server-side** (D25): pages are server components; the
+  provenance drawer (the only client-side fetch) goes through a same-origin pass-through
+  proxy (`/api/provenance/[id]`), so the Go API needs no CORS headers and the client
+  trivially makes no LLM calls.
+- **Money in the client:** decimal strings end to end; `lib/decimal.ts` does BigInt
+  minor-units math for the balance ribbon and renders via pure string formatting. JS
+  `number` appears only for bar-width percentages (a display ratio, not money). Exact 4dp
+  values are preserved in `title` attributes wherever display rounds to cents.
+- **`/v1/facts` gained an optional `scheme`+`code` node filter** (must come together;
+  `scheme=payee` and `__unclassified__` supported, mirroring the view endpoint) — the
+  drill-down behind every node click, uniform across all three dimensions. Ordering changed
+  from `fact_id` to `amount DESC, fact_id` (still deterministic). `payee`/`code` UUIDs are
+  now validated in the handler (400 instead of a 500 from the `::uuid` cast). OpenAPI
+  updated.
+- **Contract `FiscalYearView`/`FiscalNodeView` do not match the served view payload** (the
+  schema has per-node `schemeId` and no `unmapped` requirement; the API emits neither
+  per-node `schemeId` nor `hasChildren`). Per D24 `docs/openapi.yaml` is authoritative for
+  the read API, so the web types (`lib/types.ts`) mirror it. Proposed correction: either
+  align the contract view types with the served shape in a future contract rev, or generate
+  them from the OpenAPI doc instead of the fiscal schema.
+- **Dimension → scheme mapping is CA-specific** (`lib/dimensions.ts`: department /
+  acquisition type / payee → `us_ca_department` / `us_ca_acquisition_type` / `payee`).
+  Phase 0 is California end to end; a second jurisdiction turns this into a
+  per-jurisdiction lookup.
+- **Shared-stack caveat rediscovered:** the store integration test leaves a `supersedes`
+  correction row behind (it resets the schema at start, not at end), after which the UI
+  total honestly drops by the superseded amount — D24 current-facts-only working as
+  designed. Re-running the API integration test restores a pristine 989-fact state.
+- **Acceptance evidence:** headless-Chromium walk (12 checks, all green) — identical
+  $38,695,819.91 total across department (57 nodes) / acquisition type (5) / payee (443);
+  coverage badge renders "coverage unknown — no official total ingested yet" (null
+  denominator until S8); money-in side carries the "illustrative — not live data" marker
+  with a figure-free sketch; department and payee drill-downs list award-grain PO rows; the
+  provenance drawer opens from a row click showing factHash, rawSha256, the
+  `raw/us-ca/purchase-order-data/2014-15/<sha>.bin` object key, source URL, and the
+  derivation query pinning the row `_id`; payee drill shows the vendor-across-departments
+  cross-cut.

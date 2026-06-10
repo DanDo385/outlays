@@ -123,16 +123,24 @@ paths:
         '404': { description: entity not found }
   /v1/facts:
     get:
-      summary: Paged fact listing
+      summary: Paged fact listing (largest amount first)
+      description: >
+        Optionally filtered to one view node via `scheme` + `code` (must be given together,
+        mirroring the view endpoint): `code=__unclassified__` selects facts with no assignment
+        in that scheme; `scheme=payee` selects by payee entity (`code` = entity id, or
+        `__unclassified__` for facts with no payee). This is the drill-down behind the UI.
       parameters:
         - { name: jurisdiction, in: query, schema: { type: string } }
         - { name: year, in: query, schema: { type: string, pattern: '^\d{4}(-\d{2})?$' } }
         - { name: flow, in: query, schema: { type: string, enum: [spending, revenue] } }
         - { name: payee, in: query, schema: { type: string, format: uuid } }
+        - { name: scheme, in: query, schema: { type: string }, description: "scheme_id or 'payee'; requires code" }
+        - { name: code, in: query, schema: { type: string }, description: "node code, entity id, or __unclassified__; requires scheme" }
         - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 1000 } }
         - { name: offset, in: query, schema: { type: integer, default: 0 } }
       responses:
         '200': { description: ok }
+        '400': { description: invalid year/flow/payee or mismatched scheme+code }
   /v1/fact/{id}/provenance:
     get:
       summary: Raw-snapshot pointer + hashes + derivation query for a fact

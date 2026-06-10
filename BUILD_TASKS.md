@@ -42,7 +42,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
     the SAME facts; flows endpoint shows one vendor across departments; provenance resolves
     to a real object-store key. Commit OpenAPI doc.
 
-- [ ] **S7 — Web UI** (Next.js, `packages/web`). Two-sided ledger; masthead year switcher;
+- [x] **S7 — Web UI** (Next.js, `packages/web`). Two-sided ledger; masthead year switcher;
     balance ribbon; money-in left / money-out right; drill-down; dimension switcher
     (department / acquisition type / vendor); provenance drawer; coverage badge; illustrative
     marker for non-live data; no client-side LLM calls.

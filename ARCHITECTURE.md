@@ -287,6 +287,18 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
   `resultHash` independent of emit order and free of per-run noise, so the same fixtures
   reproduce the same hash — verified byte-identical across the TS SDK, Python SDK, and Go
   conformance harness. The SDKs and the harness MUST keep this rule in lockstep. (S2)
+- **D25 — Web UI is server-rendered; the browser never holds an unsourced or floated
+  number.** `packages/web` is a Next.js App Router app in which every read-API fetch happens
+  server-side (the provenance drawer goes through a pass-through proxy route), so the read API
+  needs no CORS and "no LLM calls from the web client" is structural, not a convention. Money
+  stays a decimal string end to end in the client; the only arithmetic (balance ribbon) is
+  BigInt minor-units math, and JS `number` appears solely for display ratios (bar widths),
+  never amounts. The not-live revenue side renders the API's honest zero plus an explicit
+  "illustrative — not live data" marker and a figure-free sketch; the coverage badge renders a
+  null denominator as "coverage unknown", never as 100%. Drill-down reuses `/v1/facts` with a
+  new optional `scheme`+`code` node filter (mirroring the view endpoint, incl. `scheme=payee`
+  and `__unclassified__`), ordered largest-first; all routes are `force-dynamic` so `next
+  build` never touches the API. (S7)
 - **D14 — Project renamed `fiscal-warehouse` → `outlays`.** The original name in the build
   prompt was "Fiscal Warehouse" (kebab `fiscal-warehouse`). The project is now **Outlays**:
   npm scope `@outlays/*`, Go module `github.com/djmagro/outlays/core`, User-Agent

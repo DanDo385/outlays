@@ -220,16 +220,39 @@ type FactRow struct {
 	FactHash     string  `json:"factHash"`
 }
 
-// ListFacts returns a page of facts filtered by jurisdiction/year/flow/payee.
-func ListFacts(ctx context.Context, pool *pgxpool.Pool, jur, year, flow, payee string, limit, offset int) ([]FactRow, error) {
-	rows, err := pool.Query(ctx, `
+// ListFacts returns a page of current facts filtered by jurisdiction/year/flow/payee and,
+// optionally, by a view node (scheme, code) — the drill-down behind the UI. Mirroring the
+// view endpoint: code __unclassified__ selects facts with no assignment in the scheme, and
+// scheme 'payee' selects by payee entity (code = entity id, or __unclassified__ = no payee).
+func ListFacts(ctx context.Context, pool *pgxpool.Pool, jur, year, flow, payee, scheme, code string, limit, offset int) ([]FactRow, error) {
+	q := `
 		SELECT fact_id::text, jurisdiction, fiscal_year, flow, grain, amount::text, currency,
 		       occurred_on::text, description, payee_entity::text, fact_hash
 		FROM fiscal_fact
 		WHERE ($1='' OR jurisdiction=$1) AND ($2='' OR fiscal_year=$2)
 		  AND ($3='' OR flow=$3) AND ($4='' OR payee_entity=$4::uuid)
-		  AND NOT EXISTS (SELECT 1 FROM fiscal_fact s WHERE s.supersedes = fiscal_fact.fact_id)
-		ORDER BY fact_id LIMIT $5 OFFSET $6`, jur, year, flow, payee, limit, offset)
+		  AND NOT EXISTS (SELECT 1 FROM fiscal_fact s WHERE s.supersedes = fiscal_fact.fact_id)`
+	args := []any{jur, year, flow, payee}
+	switch {
+	case scheme == "":
+	case scheme == "payee" && code == UnclassifiedCode:
+		q += ` AND payee_entity IS NULL`
+	case scheme == "payee":
+		args = append(args, code)
+		q += fmt.Sprintf(` AND payee_entity = $%d::uuid`, len(args))
+	case code == UnclassifiedCode:
+		args = append(args, scheme)
+		q += fmt.Sprintf(` AND NOT EXISTS (SELECT 1 FROM classification_assignment a
+			WHERE a.fact_id = fiscal_fact.fact_id AND a.scheme_id = $%d)`, len(args))
+	default:
+		args = append(args, scheme, code)
+		q += fmt.Sprintf(` AND EXISTS (SELECT 1 FROM classification_assignment a
+			WHERE a.fact_id = fiscal_fact.fact_id AND a.scheme_id = $%d AND a.code = $%d)`,
+			len(args)-1, len(args))
+	}
+	args = append(args, limit, offset)
+	q += fmt.Sprintf(` ORDER BY amount DESC, fact_id LIMIT $%d OFFSET $%d`, len(args)-1, len(args))
+	rows, err := pool.Query(ctx, q, args...)
 	if err != nil {
 		return nil, err
 	}

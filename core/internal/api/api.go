@@ -17,7 +17,10 @@ import (
 	"github.com/jackc/pgx/v5/pgxpool"
 )
 
-var fiscalYearRe = regexp.MustCompile(`^\d{4}(-\d{2})?$`)
+var (
+	fiscalYearRe = regexp.MustCompile(`^\d{4}(-\d{2})?$`)
+	uuidRe       = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
+)
 
 // Server holds dependencies for the API handlers.
 type Server struct {
@@ -186,12 +189,39 @@ func (s *Server) facts(w http.ResponseWriter, r *http.Request) {
 		writeErr(w, http.StatusBadRequest, "invalid flow")
 		return
 	}
+	payee := q.Get("payee")
+	if payee != "" && !uuidRe.MatchString(payee) {
+		writeErr(w, http.StatusBadRequest, "invalid payee id")
+		return
+	}
+	// Optional view-node filter: scheme + code together (mirrors the view endpoint, incl.
+	// scheme=payee and the __unclassified__ bucket).
+	scheme, code := q.Get("scheme"), q.Get("code")
+	if (scheme == "") != (code == "") {
+		writeErr(w, http.StatusBadRequest, "scheme and code must be provided together")
+		return
+	}
+	if scheme != "" && scheme != "payee" {
+		exists, err := store.SchemeExists(r.Context(), s.Pool, scheme)
+		if err != nil {
+			writeErr(w, http.StatusInternalServerError, err.Error())
+			return
+		}
+		if !exists {
+			writeErr(w, http.StatusBadRequest, "unknown scheme: "+scheme)
+			return
+		}
+	}
+	if scheme == "payee" && code != store.UnclassifiedCode && !uuidRe.MatchString(code) {
+		writeErr(w, http.StatusBadRequest, "invalid payee code")
+		return
+	}
 	limit := clampLimit(r, 100, 1000)
 	offset, _ := strconv.Atoi(q.Get("offset"))
 	if offset < 0 {
 		offset = 0
 	}
-	rows, err := store.ListFacts(r.Context(), s.Pool, q.Get("jurisdiction"), year, flow, q.Get("payee"), limit, offset)
+	rows, err := store.ListFacts(r.Context(), s.Pool, q.Get("jurisdiction"), year, flow, payee, scheme, code, limit, offset)
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())
 		return
