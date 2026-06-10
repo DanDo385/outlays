@@ -1,0 +1,164 @@
+openapi: 3.1.0
+info:
+  title: Outlays read API
+  version: 0.1.0
+  description: >
+    Read-only public surface (ARCHITECTURE.md Section 5). Every monetary figure is sourced;
+    /v1/leads returns only human-published leads. Money is a decimal string, never a float.
+  license:
+    name: Apache-2.0
+servers:
+  - url: http://localhost:8080
+components:
+  schemas:
+    Money:
+      type: string
+      pattern: '^-?\d{1,18}(\.\d{1,4})?$'
+      description: Decimal string; never a float.
+    Node:
+      type: object
+      required: [code, label, amount, currency, factCount]
+      properties:
+        code: { type: string, description: "Scheme code, entity id, or __unclassified__" }
+        label: { type: string }
+        amount: { $ref: '#/components/schemas/Money' }
+        currency: { type: string }
+        factCount: { type: integer }
+    View:
+      type: object
+      required: [jurisdiction, fiscalYear, flow, schemeId, total, currency, unmapped, nodes]
+      properties:
+        jurisdiction: { type: string }
+        fiscalYear: { type: string }
+        flow: { type: string, enum: [spending, revenue] }
+        schemeId: { type: string }
+        total: { $ref: '#/components/schemas/Money' }
+        currency: { type: string }
+        unmapped:
+          $ref: '#/components/schemas/Money'
+          description: Total of facts with no assignment in the requested scheme (also the __unclassified__ node).
+        nodes:
+          type: array
+          items: { $ref: '#/components/schemas/Node' }
+    Provenance:
+      type: object
+      required: [factId, factHash, derivationQuery]
+      properties:
+        factId: { type: string, format: uuid }
+        factHash: { type: string }
+        derivationQuery: { type: string }
+        rawSha256: { type: [string, 'null'] }
+        storageKey: { type: [string, 'null'], description: Object-storage key for the raw snapshot bytes. }
+        snapshotUrl: { type: [string, 'null'] }
+        httpStatus: { type: [integer, 'null'] }
+        bytes: { type: [integer, 'null'] }
+    Error:
+      type: object
+      properties:
+        error: { type: string }
+paths:
+  /v1/healthz:
+    get:
+      summary: Liveness + DB ping
+      responses:
+        '200': { description: ok }
+        '503': { description: db unavailable }
+  /v1/jurisdictions:
+    get:
+      summary: List jurisdictions present in the warehouse
+      responses:
+        '200': { description: ok }
+  /v1/{jur}/years:
+    get:
+      summary: List fiscal years for a jurisdiction (descending)
+      parameters:
+        - { name: jur, in: path, required: true, schema: { type: string } }
+      responses:
+        '200': { description: ok }
+  /v1/{jur}/{year}/view:
+    get:
+      summary: One-level rollup over a scheme (or the payee tree)
+      description: >
+        Groups current (non-superseded) facts by their assignment in `scheme`. Facts with no
+        assignment in that scheme are returned in an explicit `__unclassified__` node and in
+        `unmapped` — never dropped. `scheme=payee` groups by payee entity.
+      parameters:
+        - { name: jur, in: path, required: true, schema: { type: string } }
+        - { name: year, in: path, required: true, schema: { type: string, pattern: '^\d{4}(-\d{2})?$' } }
+        - { name: scheme, in: query, required: true, schema: { type: string }, description: "scheme_id or 'payee'" }
+        - { name: flow, in: query, required: false, schema: { type: string, enum: [spending, revenue], default: spending } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/View' }
+        '400':
+          description: invalid scheme/flow/year
+          content: { application/json: { schema: { $ref: '#/components/schemas/Error' } } }
+  /v1/{jur}/{year}/coverage:
+    get:
+      summary: Coverage = sum(transaction+award facts) / official control total
+      parameters:
+        - { name: jur, in: path, required: true, schema: { type: string } }
+        - { name: year, in: path, required: true, schema: { type: string, pattern: '^\d{4}(-\d{2})?$' } }
+      responses:
+        '200': { description: "numerator always present; denominator/ratio null until a control_total is ingested (S8)" }
+  /v1/entities:
+    get:
+      summary: Search entities by canonical-name substring
+      parameters:
+        - { name: q, in: query, required: true, schema: { type: string } }
+        - { name: limit, in: query, required: false, schema: { type: integer, default: 50, maximum: 200 } }
+      responses:
+        '200': { description: ok }
+  /v1/entities/{id}/flows:
+    get:
+      summary: One entity's spending broken down by department (vendor across departments)
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+        - { name: year, in: query, required: true, schema: { type: string, pattern: '^\d{4}(-\d{2})?$' } }
+      responses:
+        '200': { description: ok }
+        '404': { description: entity not found }
+  /v1/facts:
+    get:
+      summary: Paged fact listing
+      parameters:
+        - { name: jurisdiction, in: query, schema: { type: string } }
+        - { name: year, in: query, schema: { type: string, pattern: '^\d{4}(-\d{2})?$' } }
+        - { name: flow, in: query, schema: { type: string, enum: [spending, revenue] } }
+        - { name: payee, in: query, schema: { type: string, format: uuid } }
+        - { name: limit, in: query, schema: { type: integer, default: 100, maximum: 1000 } }
+        - { name: offset, in: query, schema: { type: integer, default: 0 } }
+      responses:
+        '200': { description: ok }
+  /v1/fact/{id}/provenance:
+    get:
+      summary: Raw-snapshot pointer + hashes + derivation query for a fact
+      parameters:
+        - { name: id, in: path, required: true, schema: { type: string, format: uuid } }
+      responses:
+        '200':
+          description: ok
+          content:
+            application/json:
+              schema: { $ref: '#/components/schemas/Provenance' }
+        '404': { description: fact not found }
+  /v1/compare:
+    get:
+      summary: Total a (scheme, code) across jurisdictions
+      parameters:
+        - { name: scheme, in: query, required: true, schema: { type: string } }
+        - { name: code, in: query, required: true, schema: { type: string } }
+        - { name: jurisdictions, in: query, required: true, schema: { type: string }, description: comma-separated }
+      responses:
+        '200': { description: ok }
+  /v1/leads:
+    get:
+      summary: Published leads only (never any other status)
+      parameters:
+        - { name: status, in: query, required: false, schema: { type: string, enum: [published] } }
+      responses:
+        '200': { description: "published leads (empty until S11)" }
+        '400': { description: a non-published status was requested }

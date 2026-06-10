@@ -226,6 +226,15 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
 - **D13 — `SchemeId` is a closed enum in the contract.** Mirrors the DB FK to
   `classification_scheme`; an unknown scheme fails pure schema validation. Adding a per-source
   scheme is a deliberate contract change + regen, not a runtime free-for-all. (S1)
+- **D24 — Read API: unclassified bucket, current facts, decimal-string money.** The `view`
+  endpoint LEFT JOINs facts to assignments and places facts with no assignment for the
+  requested scheme in an explicit `__unclassified__` node (also surfaced as `unmapped`) — node
+  totals + unmapped always reconcile to the view total; facts are never silently dropped (this
+  matters once COFOG coverage is partial). Multiple assignments per scheme are de-duplicated
+  (latest version) to avoid double counting. Views/coverage count only current (non-superseded)
+  facts. All amounts are emitted as exact decimal strings (`::text`), never floats. `/v1/leads`
+  returns only `status='published'` and rejects any other requested status. A hand-maintained
+  OpenAPI 3.1 document is committed at `docs/openapi.yaml`. (S6)
 - **D22 — Orchestrator verifies by re-derivation before persisting.** After running an adapter
   (`info` → `fetch`), the orchestrator validates the output against the `AdapterOutput` schema
   **and** recomputes `resultHash` from the facts (shared `verify` package), refusing to persist

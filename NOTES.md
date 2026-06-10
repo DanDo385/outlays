@@ -130,6 +130,33 @@ the bottom.
   UPDATE+DELETE raise on every table, the app REVOKE blocks UPDATE, the object key exists, and
   a `supersedes` correction chains. Repeatable across runs.
 
+## S6
+
+- **Unclassified bucket (design decision, requested):** the `view` endpoint groups facts by
+  their assignment in the requested scheme via a LEFT JOIN; any fact with **no** assignment for
+  that scheme is placed in an explicit `__unclassified__` node (label "Unclassified") and its
+  total also surfaced in the view's `unmapped` field. Facts are **never silently dropped**, so
+  node totals + unmapped always reconcile to the view total. This matters once COFOG mappings
+  land (S9) with partial coverage — unmapped is honest (Hard Rule 5). To avoid double-counting
+  when a fact has multiple assignments in one scheme, the join de-duplicates to one assignment
+  per fact (`DISTINCT ON (fact_id) … ORDER BY version DESC`).
+- **Current facts only:** views/coverage exclude facts that have been superseded
+  (`NOT EXISTS (SELECT 1 FROM fiscal_fact s WHERE s.supersedes = f.fact_id)`); correction rows
+  themselves are included. Money is returned as exact decimal strings (`sum(amount)::text`),
+  never float; the API also sums decimal strings via integer minor-units math (`addDecimals`).
+- **Curl-walk evidence (989 facts):** the same CA spending totals to `38695819.9100` under
+  `us_ca_department` (57 nodes, unmapped 0), `us_ca_acquisition_type` (5 nodes), and `payee`
+  (443 nodes, unmapped 11.1M = no/Unknown vendor); `cofog` returns one `__unclassified__` node
+  == total. `entities/{id}/flows` shows Technology Integration Group across 11 departments.
+  Provenance resolves to `raw/us-ca/purchase-order-data/2014-15/<sha>.bin`, confirmed present
+  in MinIO. `leads?status=published` is empty; `status=draft` → 400.
+- **OpenAPI** is a hand-maintained `docs/openapi.yaml` (3.1), not auto-generated from code —
+  pragmatic for now; a codegen step could replace it later. The API integration test
+  (`//go:build integration`) drives the router via `httptest` over the live stack.
+- **`entities/{id}/flows`** is intentionally a department cross-cut (groups the vendor's facts
+  by `us_ca_department`) — the simplest endpoint that demonstrates one vendor across many
+  departments. A scheme-parameterized flows view can come later.
+
 ## S5
 
 - **Acceptance year:** the prompt says "CA 2024-25" but the dataset only covers FY 2012-13 …

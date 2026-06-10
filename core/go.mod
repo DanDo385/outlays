@@ -5,6 +5,7 @@ go 1.25.7
 require (
 	github.com/atombender/go-jsonschema v0.23.1
 	github.com/cyberphone/json-canonicalization v0.0.0-20241213102144-19d51d7fe467
+	github.com/go-chi/chi/v5 v5.3.0
 	github.com/google/uuid v1.6.0
 	github.com/jackc/pgx/v5 v5.10.0
 	github.com/minio/minio-go/v7 v7.2.0

@@ -36,7 +36,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
   - ACCEPT: one command ingests CA 2024-25 into a fresh stack; forced-failure and
     exit-code-2 paths recorded correctly on `ingestion_run`.
 
-- [ ] **S6 — Read API** (Section 5; leads stubbed until S11). Provenance endpoint joins
+- [x] **S6 — Read API** (Section 5; leads stubbed until S11). Provenance endpoint joins
     fact → raw_snapshot → storage key.
   - ACCEPT: curl walk on real data — department view, acquisition-type view, payee view over
     the SAME facts; flows endpoint shows one vendor across departments; provenance resolves
