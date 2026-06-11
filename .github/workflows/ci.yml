@@ -98,16 +98,16 @@ jobs:
         options: >-
           --health-cmd "pg_isready -U fiscal_owner -d fiscal"
           --health-interval 5s --health-timeout 5s --health-retries 20
-      minio:
-        image: bitnami/minio:latest
-        env:
-          MINIO_ROOT_USER: minioadmin
-          MINIO_ROOT_PASSWORD: minioadmin
-          MINIO_DEFAULT_BUCKETS: fiscal-raw
-        ports:
-          - 9000:9000
+    # MinIO runs as a step, not a service: bitnami/minio (which auto-started) is gone from
+    # Docker Hub, and GH service containers cannot pass the official image's `server /data`
+    # command. Tests create the bucket themselves (store.NewObjectStore).
     steps:
       - uses: actions/checkout@v4
+      - name: start minio
+        run: >-
+          docker run -d --name minio -p 9000:9000
+          -e MINIO_ROOT_USER=minioadmin -e MINIO_ROOT_PASSWORD=minioadmin
+          minio/minio:latest server /data
       - uses: pnpm/action-setup@v4
         with:
           version: 10.15.1
