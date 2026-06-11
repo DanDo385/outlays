@@ -3,8 +3,8 @@
 - base_url: https://open.gsa.gov/api/entity-api; https://sam.gov/content/entity-registration; https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf; https://www.irs.gov/about-irs/use-of-content-from-irsgov
 - access_method: api | bulk-download | public-web
 - working_query_or_file: SAM Entity Management API documentation; IRS EO BMF CSV extracts `eo1.csv`, `eo2.csv`, `eo3.csv`, `eo4.csv`; IRS EO BMF guide Publication 5926; IRS Use of Content page.
-- confirmed_at: 2026-06-11T03:06:20Z
-- response_status: mixed. SAM documentation verified; approved key-dependent probes against documented SAM Entity Management API paths returned empty 404 responses, so live public entity access and extract generation remain not verified. IRS EO BMF fallback verified live.
+- confirmed_at: 2026-06-11T03:17:26Z
+- response_status: mixed. SAM documentation verified; approved key-dependent probes, including a corrected-host P2.1 diagnostic against `api.sam.gov/entity-information/v3/entities` with v2 fallback, returned empty 404 responses. Live public SAM entity access and extract generation remain not verified. IRS EO BMF fallback verified live.
 - formats_and_sizes: SAM Entity Management API documentation says synchronous JSON is paged at 10 records per page with a 10,000-record synchronous cap, and asynchronous extract downloads are available via `format=json` or `format=csv` with a 1,000,000-record extract cap. Live extract URL generation was not verified because key-based probes returned empty 404 responses. IRS EO BMF is CSV, split by state/region; regional CSV probes returned live headers and sample rows.
 - fields_we_map: UEI, legacy DUNS, EIN/TIN, legal name, DBA/name aliases, physical/mailing address, NAICS, PSC, CAGE where available, tax-exempt organization classification fields, source-scoped alias confidence.
 - identifiers_present: SAM public tier carries UEI plus entity public profile fields; SAM sensitive tier can include SSN/TIN/EIN but is restricted. IRS EO BMF carries EIN, name, care-of-name, street, city, state, ZIP, exemption/classification/status fields.
@@ -27,6 +27,7 @@ Completed:
 - Ran key-dependent SAM Entity Management API probes against documented production and alpha paths for v1-v4, using both `X-Api-Key` header and `api_key` query parameter placements where appropriate.
 - Ran narrow UEI-scoped `format=json` and `format=csv` extract probes; no broad all-entity extract job was requested.
 - Re-ran the bounded public probe suite after the operator stated an api.data.gov key was available. `DATA_GOV_API_KEY` was not visible to the Hermes tool process; the operator approved reusing the existing 1Password item for the retry.
+- Ran P2.1 corrected-host diagnostic probes against `https://api.sam.gov/entity-information/v3/entities` and `https://api.sam.gov/entity-information/v2/entities`, with one UEI-scoped query per endpoint/auth-placement pair, using both `api_key` query parameter and `X-Api-Key` header placement. The diagnostic stayed within the operator's 8-request cap.
 - Extracted official IRS public-disclosure pages for Form 990 context in Gate 2.
 - Verified IRS EO BMF official page and guide.
 - Verified IRS EO BMF live CSV regional files with HTTP/sample reads.
@@ -50,6 +51,7 @@ Verified:
 - Query-parameter and header key placement both produced the same empty 404 result; no `X-RateLimit-*` headers or api.data.gov-style JSON error codes were observed.
 - Narrow `format=json` and `format=csv` extract probes returned empty 404 responses, so live public extract download URL generation was not verified with this key.
 - The re-run probe suite produced the same result: 30 public GET probes, 30 HTTP 404 responses, empty bodies, `Content-Length: 0`, no `X-RateLimit-*` headers, no public response schema, and no extract download token or URL.
+- P2.1 corrected-host diagnostic on `api.sam.gov` produced the same decisive envelope result via system `curl`: four successful HTTP transports, four HTTP 404 responses, empty bodies, `Content-Length: 0`, no `X-RateLimit-*` headers, no gateway request headers observed, and no structured api.data.gov JSON error envelope. A preliminary Python-stdlib transport attempt failed local TLS validation before reaching an HTTP response and was not used as endpoint evidence.
 - Official documentation, not live payload, supports the field conclusion: public data includes UEI, names, registration details, addresses, business types, PSC, NAICS, and points of contact name/address; Sensitive CUI is where SSN/TIN/EIN and banking fields are described.
 - IRS EO BMF is official, CSV, cumulative, and updated monthly on the 2nd Monday of the month.
 - IRS EO BMF CSV header includes `EIN`, `NAME`, `ICO`, `STREET`, `CITY`, `STATE`, `ZIP`, and many exemption/classification fields.
@@ -218,6 +220,44 @@ P2 verdict:
 
 - Public SAM entity API and extract availability remain documentation-supported but not live-verified with the approved key source.
 - The Outlays ingestion plan should not depend on SAM Entity Management as a live Phase 1 source until a SAM.gov Public API Key or system-account entitlement returns a schema, page, extract token, or downloadable artifact.
+
+### P2.1 corrected-host diagnostic
+
+The operator noted that a real api.data.gov gateway miss should normally carry rate-limit headers and a structured JSON error envelope, and suspected the earlier probes might have used a bad host/path construction. A final bounded diagnostic therefore tested the corrected host/path directly:
+
+```text
+https://api.sam.gov/entity-information/v3/entities
+https://api.sam.gov/entity-information/v2/entities
+```
+
+Probe timestamp: 2026-06-11T03:17:26Z.
+
+Scope:
+
+- 8 total request attempts, within the operator cap.
+- 4 Python-stdlib attempts failed local TLS certificate validation before an HTTP response; these are recorded only as local transport failures, not SAM endpoint evidence.
+- 4 system-`curl` requests reached the HTTP layer.
+- UEI tested: `MW4NM5KU2M81`.
+- UEI parameter: `ueiSAM`.
+- Public section request: `includeSections=entityRegistration,coreData`.
+- Auth placements tested: `api_key` query parameter and `X-Api-Key` header.
+- Versions tested: v3 primary and v2 fallback.
+
+Observed HTTP-layer result from `curl`:
+
+| Version | Auth placement | Status | Body | Header signal | Structured error envelope |
+|---|---|---:|---|---|---|
+| v3 | `api_key` query parameter | 404 | empty | `Content-Length: 0`; no `X-RateLimit-*` | none |
+| v3 | `X-Api-Key` header | 404 | empty | `Content-Length: 0`; no `X-RateLimit-*` | none |
+| v2 | `api_key` query parameter | 404 | empty | `Content-Length: 0`; no `X-RateLimit-*` | none |
+| v2 | `X-Api-Key` header | 404 | empty | `Content-Length: 0`; no `X-RateLimit-*` | none |
+
+P2.1 verdict:
+
+- The corrected-host/path probe did not produce the expected api.data.gov gateway envelope.
+- Bare 404s persisted on `api.sam.gov` for both v3 and v2 with both documented key placements.
+- The service-unavailable / not-live-verified verdict therefore stands confirmed for this key source and these public GET probes.
+- Gate 3 does not promote SAM Entity Management to Phase 1 ingestion-readiness. Treat SAM public entity data as documentation-supported future evidence until a working SAM.gov public key, entitlement, or documented endpoint variant returns a schema, page, extract token, or downloadable artifact.
 
 ## IRS EO BMF fallback verification
 
