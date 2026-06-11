@@ -11,6 +11,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/djmagro/outlays/core/internal/engine"
 	"github.com/djmagro/outlays/core/internal/store"
 	"github.com/go-chi/chi/v5"
 	"github.com/go-chi/chi/v5/middleware"
@@ -22,9 +23,12 @@ var (
 	uuidRe       = regexp.MustCompile(`^[0-9a-fA-F]{8}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{4}-[0-9a-fA-F]{12}$`)
 )
 
-// Server holds dependencies for the API handlers.
+// Server holds dependencies for the API handlers. Duck is the optional DuckDB-over-Parquet
+// engine (S10): when configured, the view endpoint accepts the internal flag engine=duckdb
+// and serves the identical response shape from the latest Parquet export.
 type Server struct {
 	Pool *pgxpool.Pool
+	Duck *engine.Duck
 }
 
 // Router builds the chi router with all v1 routes.
@@ -107,14 +111,24 @@ func (s *Server) view(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// Internal engine flag (S10): default postgres; duckdb serves the same shape from the
+	// latest Parquet export. Deliberately not part of the public OpenAPI surface.
+	eng := q.Get("engine")
+	if eng != "" && eng != "postgres" && eng != "duckdb" {
+		writeErr(w, http.StatusBadRequest, "unknown engine")
+		return
+	}
+	if eng == "duckdb" && s.Duck == nil {
+		writeErr(w, http.StatusBadRequest, "duckdb engine not configured")
+		return
+	}
+
 	ctx := r.Context()
 	var (
 		v   *store.View
 		err error
 	)
-	if scheme == "payee" {
-		v, err = store.ViewByPayee(ctx, s.Pool, jur, year, flow)
-	} else {
+	if scheme != "payee" {
 		exists, sErr := store.SchemeExists(ctx, s.Pool, scheme)
 		if sErr != nil {
 			writeErr(w, http.StatusInternalServerError, sErr.Error())
@@ -124,7 +138,20 @@ func (s *Server) view(w http.ResponseWriter, r *http.Request) {
 			writeErr(w, http.StatusBadRequest, "unknown scheme: "+scheme)
 			return
 		}
+	}
+	switch {
+	case eng == "duckdb" && scheme == "payee":
+		v, err = s.Duck.ViewByPayee(ctx, jur, year, flow)
+	case eng == "duckdb":
+		v, err = s.Duck.ViewByScheme(ctx, jur, year, flow, scheme)
+	case scheme == "payee":
+		v, err = store.ViewByPayee(ctx, s.Pool, jur, year, flow)
+	default:
 		v, err = store.ViewByScheme(ctx, s.Pool, jur, year, flow, scheme)
+	}
+	if err == engine.ErrNoExport {
+		writeErr(w, http.StatusConflict, "no parquet export registered for this partition; run orchestrator export-parquet")
+		return
 	}
 	if err != nil {
 		writeErr(w, http.StatusInternalServerError, err.Error())

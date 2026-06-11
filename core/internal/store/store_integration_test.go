@@ -61,6 +61,7 @@ var dataTables = map[string]string{
 	"classification_assignment": "version",
 	"control_total":             "derivation_query",
 	"lead":                      "rule_id",
+	"parquet_export":            "facts_key",
 }
 
 func TestIntegrationIngestAndAppendOnly(t *testing.T) {
@@ -217,4 +218,13 @@ func seedWorkflowRows(t *testing.T, ctx context.Context, owner *pgxpool.Pool, ru
 	_, _ = owner.Exec(ctx, `
 		INSERT INTO lead (rule_id, fact_ids, generated_query, status)
 		VALUES ('seed-rule', ARRAY[$1::uuid], 'seed for trigger test', 'draft')`, factID)
+	if _, err := owner.Exec(ctx, `
+		INSERT INTO parquet_export (jurisdiction, fiscal_year,
+			facts_sha256, facts_key, facts_rows,
+			assignments_sha256, assignments_key, assignments_rows,
+			codes_sha256, codes_key, codes_rows,
+			entities_sha256, entities_key, entities_rows)
+		VALUES ('us-ca','2014-15','s','k',0,'s','k',0,'s','k',0,'s','k',0)`); err != nil {
+		t.Fatalf("seed parquet_export: %v", err)
+	}
 }

@@ -60,7 +60,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
   - ACCEPT: with a fixture mapping applied, the cofog view endpoint returns a rollup and
     unmapped categories are listed explicitly.
 
-- [ ] **S10 — Parquet + DuckDB path.** Export `fiscal_fact` partitions
+- [x] **S10 — Parquet + DuckDB path.** Export `fiscal_fact` partitions
     (jurisdiction/fiscal_year) as content-addressed Parquet; DuckDB query path behind the
     same API via an internal engine flag; engine correctness check.
   - ACCEPT: a vendor aggregation returns identical totals from Postgres and DuckDB with no

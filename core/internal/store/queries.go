@@ -68,7 +68,7 @@ func ViewByScheme(ctx context.Context, pool *pgxpool.Pool, jur, year, flow, sche
 	LEFT JOIN asg ON asg.fact_id = fy.fact_id
 	LEFT JOIN classification_code cc ON cc.scheme_id = $4 AND cc.code = asg.code
 	GROUP BY 1, 2
-	ORDER BY sum(fy.amount) DESC NULLS LAST`
+	ORDER BY sum(fy.amount) DESC NULLS LAST, 1`
 	v := &View{Jurisdiction: jur, FiscalYear: year, Flow: flow, SchemeID: scheme, Currency: "USD", Nodes: []Node{}}
 	return scanView(ctx, pool, v, q, jur, year, flow, scheme)
 }
@@ -86,7 +86,7 @@ func ViewByPayee(ctx context.Context, pool *pgxpool.Pool, jur, year, flow string
 	FROM fy
 	LEFT JOIN entity e ON e.entity_id = fy.payee_entity
 	GROUP BY 1, 2
-	ORDER BY sum(fy.amount) DESC NULLS LAST`
+	ORDER BY sum(fy.amount) DESC NULLS LAST, 1`
 	v := &View{Jurisdiction: jur, FiscalYear: year, Flow: flow, SchemeID: "payee", Currency: "USD", Nodes: []Node{}}
 	return scanView(ctx, pool, v, q, jur, year, flow)
 }

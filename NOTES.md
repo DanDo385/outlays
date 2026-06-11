@@ -340,3 +340,55 @@ the bottom.
 - **Test-only discovery:** `ruleId` derives from the mapping file name, so a temp copy
   named differently legitimately re-versions everything — the integration test's modified
   mapping must keep the original file name.
+
+## post-S9 (follow-ups)
+
+- **Dependabot alert #1 confirmed closed:** after pushing the override, GitHub's lockfile
+  scan marked the postcss alert `state=fixed` (`fixed_at` 2026-06-11T02:13Z) — no deferral
+  needed. **The GitHub repository was renamed** `DanDo385/outlay` → `DanDo385/outlays`
+  (push reported "this repository moved"); the local remote still uses the old URL through
+  the redirect. Left as-is (never touch git config without being asked); update the remote
+  URL when convenient.
+- **UI smoke test with patched postcss (8.5.15) green:** year page renders the exact
+  $38,695,819.91 total with the coverage badge ($156,357,000,000 denominator title intact);
+  the postcss-built stylesheet serves (9,044 B, HTTP 200); department drill-down renders
+  121 provenance hooks; the provenance proxy returns the real
+  `raw/us-ca/purchase-order-data/2014-15/<sha>.bin` storage key. The S9 cofog view is
+  served by the same stack (10 nodes incl. `__unclassified__`).
+- **S9 CI gap found while wiring S10:** the classify integration test was not in the CI
+  integration job's package list; added together with the engine test (and the us-ca-budget
+  adapter build, so the api test's S8 coverage assertions no longer skip in CI).
+
+## S10
+
+- **Export shape:** one `orchestrator export-parquet` run snapshots a partition as four
+  Parquet artifacts — facts (full history incl. superseded rows, so DuckDB applies the
+  *same* supersedes semantics at query time rather than baking them in at export time),
+  assignments (every version, for the same reason), classification codes (labels), and the
+  referenced entities. Written deterministically (stable ORDER BY; re-export of identical
+  content reproduces identical sha256s — asserted in the integration test), uploaded to
+  `parquet/{jur}/{fy}/{sha256}.parquet`, registered in append-only `parquet_export`
+  (migration 00006; covered by the store trigger test).
+- **Volatile columns excluded from facts.parquet** (`run_id`, `inserted_at`): they vary
+  across DB instances for identical logical content and would defeat content-addressed
+  de-duplication. Everything the views need plus provenance essentials is included.
+- **Equivalence is byte-exact, enforced three ways:** (1) both engines share one
+  deterministic ordering — `ORDER BY sum DESC NULLS LAST, code` (the tie-break added to the
+  Postgres views too; previously unspecified for equal sums); (2) DuckDB amounts come out
+  as DECIMAL(24,4) casts and are normalized through the same exact minor-units math
+  (`store.AddDecimals`) the Postgres path uses, so "x.9100" formatting is identical; (3)
+  the integration test compares full response bodies byte-for-byte across payee (443
+  nodes), cofog (10), us_ca_department (57) and us_ca_acquisition_type (5) — all
+  `38695819.9100`. Live CLI walk reproduced the same.
+- **No silent fallback:** `engine=duckdb` on a partition with no registered export is an
+  explicit 409. The flag is internal (not in OpenAPI, D26 untouched — response shapes are
+  unchanged, which is the acceptance bar).
+- **DuckDB specifics:** go-duckdb v2 (CGO; prebuilt static libs arrive as Go modules — the
+  first cold-cache CI build will be noticeably slower). DuckDB supports PostgreSQL-style
+  `DISTINCT ON`, so the latest-version assignment de-dup translates verbatim. Parquet reads
+  use local hash-verified copies in `OUTLAYS_PARQUET_CACHE` (default
+  `<tmp>/outlays-parquet-cache`) — no DuckDB network extensions, keeping CI offline.
+- **`parquet_export` rows are written by the app role** (INSERT-only posture holds; the
+  00003 default privileges covered the new table automatically). Sizes for the replay
+  slice: facts 151 KB / 989 rows, assignments 155 KB / 2,839 rows, codes 3.6 KB, entities
+  24 KB.

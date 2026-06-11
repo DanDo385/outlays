@@ -25,13 +25,15 @@ import (
 	"strings"
 
 	"github.com/djmagro/outlays/core/internal/classify"
+	"github.com/djmagro/outlays/core/internal/engine"
 	"github.com/djmagro/outlays/core/internal/ingest"
 	"github.com/djmagro/outlays/core/internal/store"
 )
 
 const usage = `usage:
   orchestrator run --adapter <cmd> (--year <Y> | --years <Y1,Y2>) [--dataset <d>] [--concurrency N] [--replay-dir <dir>] [--max-pages N]
-  orchestrator classify --mapping <path> --jurisdiction <jur> --year <Y> [--flow spending|revenue] [--dry-run] [--list-unmapped]`
+  orchestrator classify --mapping <path> --jurisdiction <jur> --year <Y> [--flow spending|revenue] [--dry-run] [--list-unmapped]
+  orchestrator export-parquet --jurisdiction <jur> --year <Y>`
 
 func main() {
 	if len(os.Args) < 2 {
@@ -43,10 +45,61 @@ func main() {
 		runMain(os.Args[2:])
 	case "classify":
 		classifyMain(os.Args[2:])
+	case "export-parquet":
+		exportParquetMain(os.Args[2:])
 	default:
 		fmt.Fprintln(os.Stderr, usage)
 		os.Exit(2)
 	}
+}
+
+// exportParquetMain snapshots one partition as content-addressed Parquet in object storage
+// and registers it in parquet_export (S10).
+func exportParquetMain(args []string) {
+	fs := flag.NewFlagSet("export-parquet", flag.ExitOnError)
+	jurisdiction := fs.String("jurisdiction", "", "jurisdiction to export, e.g. us-ca")
+	year := fs.String("year", "", "fiscal year to export, e.g. 2014-15")
+	_ = fs.Parse(args)
+
+	log := slog.New(slog.NewJSONHandler(os.Stderr, nil))
+	if *jurisdiction == "" || *year == "" {
+		log.Error("--jurisdiction and --year are required")
+		os.Exit(2)
+	}
+	if !fiscalYearRe.MatchString(*year) {
+		log.Error("invalid fiscal year", "year", *year)
+		os.Exit(2)
+	}
+
+	ctx := context.Background()
+	pool, err := store.Connect(ctx, mustEnv(log, "DATABASE_URL"))
+	if err != nil {
+		log.Error("connect db", "err", err)
+		os.Exit(1)
+	}
+	defer pool.Close()
+	obj, err := store.NewObjectStore(ctx, store.ObjectStoreConfigFromEnv())
+	if err != nil {
+		log.Error("connect object store", "err", err)
+		os.Exit(1)
+	}
+
+	dir, err := os.MkdirTemp("", "outlays-parquet-export-")
+	if err != nil {
+		log.Error("temp dir", "err", err)
+		os.Exit(1)
+	}
+	defer os.RemoveAll(dir)
+
+	res, err := engine.Export(ctx, pool, obj, *jurisdiction, *year, dir)
+	if err != nil {
+		log.Error("export", "err", err)
+		os.Exit(1)
+	}
+	enc := json.NewEncoder(os.Stdout)
+	enc.SetIndent("", "  ")
+	_ = enc.Encode(res)
+	log.Info("export done", "exportId", res.ExportID, "artifacts", len(res.Artifacts))
 }
 
 var fiscalYearRe = regexp.MustCompile(`^\d{4}(-\d{2})?$`)
@@ -160,7 +213,7 @@ func runMain(args []string) {
 	}
 	defer pool.Close()
 
-	obj, err := store.NewObjectStore(ctx, objConfigFromEnv())
+	obj, err := store.NewObjectStore(ctx, store.ObjectStoreConfigFromEnv())
 	if err != nil {
 		log.Error("connect object store", "err", err)
 		os.Exit(1)
@@ -224,28 +277,4 @@ func mustEnv(log *slog.Logger, key string) string {
 		os.Exit(1)
 	}
 	return v
-}
-
-func objConfigFromEnv() store.ObjectStoreConfig {
-	endpoint := os.Getenv("S3_ENDPOINT")
-	useSSL := strings.HasPrefix(endpoint, "https://")
-	endpoint = strings.TrimPrefix(strings.TrimPrefix(endpoint, "https://"), "http://")
-	if endpoint == "" {
-		endpoint = "localhost:9000"
-	}
-	return store.ObjectStoreConfig{
-		Endpoint:  endpoint,
-		AccessKey: os.Getenv("S3_ACCESS_KEY"),
-		SecretKey: os.Getenv("S3_SECRET_KEY"),
-		Bucket:    envOr("S3_BUCKET", "fiscal-raw"),
-		Region:    envOr("S3_REGION", "us-east-1"),
-		UseSSL:    useSSL,
-	}
-}
-
-func envOr(key, def string) string {
-	if v := os.Getenv(key); v != "" {
-		return v
-	}
-	return def
 }

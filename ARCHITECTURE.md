@@ -101,6 +101,9 @@ The goose migrations own the exact DDL text. The normative *shape*:
   jurisdiction-year. Low coverage is correct behavior early, not a bug.
 - `lead` — `rule_id`, `fact_ids UUID[]`, `score`, `generated_query`, `status` in
   `draft | reviewed | published | dismissed`, `reviewer`, `review_note`.
+- `parquet_export` — append-only registry of content-addressed Parquet snapshots of a
+  `(jurisdiction, fiscal_year)` partition (facts, assignments, codes, entities), each named
+  by the sha256 of its bytes; the newest row is the partition's current snapshot (D29).
 
 ### Seed data
 
@@ -115,6 +118,7 @@ The goose migrations own the exact DDL text. The normative *shape*:
 ```
 raw/{jurisdiction}/{dataset}/{fiscalYear}/{sha256}.bin
 raw/{jurisdiction}/{dataset}/{fiscalYear}/{sha256}.meta.json   (url, fetchedAt, httpStatus, selected headers)
+parquet/{jurisdiction}/{fiscalYear}/{sha256}.parquet           (analytical snapshots, D29)
 ```
 
 ---
@@ -339,6 +343,21 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
   nothing (ambiguity stays unmapped) and are reported. The loader re-verifies D24's
   reconciliation guarantee in exact decimal math and exits non-zero if mapped +
   unclassified != total. (S9)
+- **D29 — Parquet + DuckDB analytical path: content-addressed snapshots, identical
+  responses, Postgres remains the record.** `orchestrator export-parquet` snapshots a
+  partition as four Parquet artifacts (full fact history including superseded rows, every
+  assignment version, code labels, referenced entities), written deterministically, named
+  by the sha256 of their bytes under `parquet/{jur}/{fy}/`, and registered in the
+  append-only `parquet_export` table. The read API's view endpoint accepts an internal
+  `engine=duckdb` flag (default postgres; deliberately absent from the public OpenAPI doc):
+  DuckDB runs the same view SQL — current-facts filter, latest-version assignment de-dup,
+  explicit unclassified bucket — over locally cached, hash-verified copies of the latest
+  export, producing byte-identical responses (both engines share one deterministic ordering
+  incl. a code tie-break; DuckDB amounts are normalized through the same exact minor-units
+  decimal math; JS-float territory is never entered). A partition with no registered export
+  returns an explicit 409, never a silent Postgres fallback — a stale answer dressed as the
+  analytical path would be worse than an error. Engine equivalence is enforced in CI
+  (vendor/payee, cofog, and both per-source scheme views compared byte-for-byte). (S10)
 - **D14 — Project renamed `fiscal-warehouse` → `outlays`.** The original name in the build
   prompt was "Fiscal Warehouse" (kebab `fiscal-warehouse`). The project is now **Outlays**:
   npm scope `@outlays/*`, Go module `github.com/djmagro/outlays/core`, User-Agent

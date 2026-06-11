@@ -4,6 +4,9 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"io"
+	"os"
+	"strings"
 
 	"github.com/minio/minio-go/v7"
 	"github.com/minio/minio-go/v7/pkg/credentials"
@@ -65,6 +68,46 @@ func (o *ObjectStore) Put(ctx context.Context, key string, data []byte, contentT
 		return fmt.Errorf("put %s: %w", key, err)
 	}
 	return nil
+}
+
+// Get reads an object's bytes.
+func (o *ObjectStore) Get(ctx context.Context, key string) ([]byte, error) {
+	obj, err := o.client.GetObject(ctx, o.bucket, key, minio.GetObjectOptions{})
+	if err != nil {
+		return nil, fmt.Errorf("get %s: %w", key, err)
+	}
+	defer obj.Close()
+	data, err := io.ReadAll(obj)
+	if err != nil {
+		return nil, fmt.Errorf("read %s: %w", key, err)
+	}
+	return data, nil
+}
+
+// ObjectStoreConfigFromEnv builds the S3 config from S3_* env vars (shared by the cmds).
+func ObjectStoreConfigFromEnv() ObjectStoreConfig {
+	endpoint := os.Getenv("S3_ENDPOINT")
+	useSSL := strings.HasPrefix(endpoint, "https://")
+	endpoint = strings.TrimPrefix(strings.TrimPrefix(endpoint, "https://"), "http://")
+	if endpoint == "" {
+		endpoint = "localhost:9000"
+	}
+	bucket := os.Getenv("S3_BUCKET")
+	if bucket == "" {
+		bucket = "fiscal-raw"
+	}
+	region := os.Getenv("S3_REGION")
+	if region == "" {
+		region = "us-east-1"
+	}
+	return ObjectStoreConfig{
+		Endpoint:  endpoint,
+		AccessKey: os.Getenv("S3_ACCESS_KEY"),
+		SecretKey: os.Getenv("S3_SECRET_KEY"),
+		Bucket:    bucket,
+		Region:    region,
+		UseSSL:    useSSL,
+	}
 }
 
 // Exists reports whether an object key is present.
