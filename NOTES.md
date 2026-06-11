@@ -442,3 +442,24 @@ the bottom.
   limitations/factIds/score/reviewer/publishedAt, documented in `docs/openapi.yaml`. A
   contract `Lead` type can follow in a future contract rev if the web UI grows a leads
   surface (D26 applies then).
+
+## S12
+
+- **D31 Merkle construction** is normative in `ARCHITECTURE.md` Decision Log D31; `merkle.go`
+  and `scripts/verify_anchor.py` are independent implementations of that spec (acceptance
+  requires the Python path to match on-chain without importing Go).
+- **`run_anchor` is append-only** like every other evidence table; tx ref is persisted after
+  a successful `anchor()` send, never by updating `ingestion_run`.
+- **Chain access via `cast` subprocess** keeps `go.mod` free of an Ethereum client (same
+  pattern as adapter invocation in the orchestrator). Env: `ANCHOR_RPC_URL`,
+  `ANCHOR_REGISTRY_ADDRESS`, and either `ANCHOR_FROM` (unlocked anvil) or
+  `ANCHOR_PRIVATE_KEY`.
+- **Idempotent re-anchor:** if `isAnchored` is true, the CLI recomputes and compares roots;
+  mismatch is fatal; match is a verified no-op (no second tx).
+- **McKesson lead cleanup (2026-06-11):** the S11 acceptance artifact (`1aadba3b-406b-54b3-90e0-3431a76ae15c`) was published only to prove the review workflow, not as editorial judgment. Intended dismissal via `leads set-status --status dismissed --reviewer reviewer:danmagro` could not run — the local DB had been reset by integration tests (`DROP SCHEMA public CASCADE`), so the lead row and its `lead_event` history were gone. Public set verified clean (`/v1/leads?status=published` → `[]`). On any environment that still holds the artifact, dismiss explicitly so published leads are deliberate human judgments only.
+
+## CI housekeeping (2026-06-11)
+
+- Bumped GitHub Actions to Node-24-ready majors: `checkout@v6`, `setup-node@v6`,
+  `pnpm/action-setup@v6`, `setup-go@v6`. `setup-uv@v8` does not exist; pinned `@v7`.
+  Foundry job now runs `forge test -vv` (S12 contract tests).

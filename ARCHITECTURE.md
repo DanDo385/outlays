@@ -384,6 +384,21 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
   `dismissed` event retracts append-only. The review CLI (`core/cmd/leads`: run / list /
   inspect / set-status) is a private operator tool; publication additionally re-validates
   citation anchoring, limitations, fact links, and neutral wording. (S11)
+- **D31 — Run Merkle root for on-chain anchoring: deterministic, third-party
+  reproducible.** Each ingestion run's anchor commits to the set of `fiscal_fact.fact_hash`
+  values for that `run_id` whose `fact_hash` is a 64-char lowercase hex SHA-256 (content
+  commitments only; rows with other `fact_hash` shapes are excluded). Leaves are those hashes decoded from 64-char lowercase hex to 32
+  raw bytes, sorted ascending bytewise; duplicate leaves error; an empty set is not
+  anchorable. Domain-separated SHA-256 throughout (Hard Rule 3): `leafHash =
+  SHA-256(0x00 || leaf)`; `nodeHash = SHA-256(0x01 || left || right)`. At each level,
+  nodes are paired left-to-right in order; a trailing odd node is promoted unchanged to the
+  next level (never duplicated). The root is the single remaining node; a one-fact run's
+  root equals its leafHash. On chain, `runId` is the run UUID's 16 bytes in the high-order
+  bytes of a `bytes32` (low 16 bytes zero). `AnchorRegistry.anchor(runId, merkleRoot, uri)`
+  stores one anchor per run forever; duplicate `runId` and zero `merkleRoot` revert. The tx
+  ref is persisted append-only in `run_anchor`. Acceptance verification recomputes the root
+  from the database independently of the Go implementation (e.g. `scripts/verify_anchor.py`
+  from this spec alone) and compares it to the `Anchored` event and `get()` view. (S12)
 - **D14 — Project renamed `fiscal-warehouse` → `outlays`.** The original name in the build
   prompt was "Fiscal Warehouse" (kebab `fiscal-warehouse`). The project is now **Outlays**:
   npm scope `@outlays/*`, Go module `github.com/djmagro/outlays/core`, User-Agent

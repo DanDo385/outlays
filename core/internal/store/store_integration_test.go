@@ -63,6 +63,7 @@ var dataTables = map[string]string{
 	"lead":                      "rule_id",
 	"lead_event":                "reviewer",
 	"parquet_export":            "facts_key",
+	"run_anchor":                "tx_hash",
 }
 
 func TestIntegrationIngestAndAppendOnly(t *testing.T) {
@@ -236,5 +237,10 @@ func seedWorkflowRows(t *testing.T, ctx context.Context, owner *pgxpool.Pool, ru
 			entities_sha256, entities_key, entities_rows)
 		VALUES ('us-ca','2014-15','s','k',0,'s','k',0,'s','k',0,'s','k',0)`); err != nil {
 		t.Fatalf("seed parquet_export: %v", err)
+	}
+	if _, err := owner.Exec(ctx, `
+		INSERT INTO run_anchor (run_id, merkle_root, fact_count, chain_id, contract_address, tx_hash, block_number)
+		VALUES ($1, '0x' || repeat('ab', 32), 1, 31337, '0xseed', '0xseedtx', 1)`, runID); err != nil {
+		t.Fatalf("seed run_anchor: %v", err)
 	}
 }

@@ -43,7 +43,7 @@ jobs:
         working-directory: core
 
   foundry:
-    name: foundry (forge build)
+    name: foundry (forge build + test)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
@@ -52,13 +52,15 @@ jobs:
       - uses: foundry-rs/foundry-toolchain@v1
       - run: forge build
         working-directory: contracts
+      - run: forge test -vv
+        working-directory: contracts
 
   python:
     name: python (adapter SDK + contract fixtures)
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v6
-      - uses: astral-sh/setup-uv@v8
+      - uses: astral-sh/setup-uv@v7
       - run: uv sync
         working-directory: py/adapter_sdk
       - run: uv run pytest -q
@@ -80,7 +82,7 @@ jobs:
         with:
           go-version: "1.25"
           cache-dependency-path: core/go.sum
-      - uses: astral-sh/setup-uv@v8
+      - uses: astral-sh/setup-uv@v7
       - run: bash scripts/conformance.sh
 
   integration:
@@ -143,7 +145,7 @@ jobs:
         with:
           go-version: "1.25"
           cache-dependency-path: core/go.sum
-      - uses: astral-sh/setup-uv@v8
+      - uses: astral-sh/setup-uv@v7
       - run: pnpm install --frozen-lockfile
       - run: uv sync
         working-directory: py/adapter_sdk

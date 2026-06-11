@@ -73,7 +73,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
   - ACCEPT: drafts invisible to `/v1/leads`; one CLI-published lead appears with rule
     citation and fact links.
 
-- [ ] **S12 — Anchor layer.** `contracts/AnchorRegistry.sol`: `anchor(runId, merkleRoot,
+- [x] **S12 — Anchor layer.** `contracts/AnchorRegistry.sol`: `anchor(runId, merkleRoot,
     uri)` + event, duplicate-runId rejection, forge tests. `core/cmd/anchor` computes the
     Merkle root over sorted `fact_hash` for a run and submits to local anvil; tx ref
     persisted on the run.
