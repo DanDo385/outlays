@@ -3,15 +3,15 @@
 - base_url: https://open.gsa.gov/api/entity-api; https://sam.gov/content/entity-registration; https://www.irs.gov/charities-non-profits/exempt-organizations-business-master-file-extract-eo-bmf; https://www.irs.gov/about-irs/use-of-content-from-irsgov
 - access_method: api | bulk-download | public-web
 - working_query_or_file: SAM Entity Management API documentation; IRS EO BMF CSV extracts `eo1.csv`, `eo2.csv`, `eo3.csv`, `eo4.csv`; IRS EO BMF guide Publication 5926; IRS Use of Content page.
-- confirmed_at: 2026-06-11T02:53:24Z
-- response_status: mixed. SAM documentation verified; operator-supplied 1Password key was tested against documented SAM Entity Management API paths, but live public/entity and extract probes returned empty 404 responses. IRS EO BMF fallback verified live.
-- formats_and_sizes: SAM Entity Management API documentation says synchronous JSON is supported and asynchronous extract downloads are available via `format=json` or `format=csv`; live extract URL generation was not verified because key-based probes returned empty 404 responses. IRS EO BMF is CSV, split by state/region; regional CSV probes returned live headers and sample rows.
+- confirmed_at: 2026-06-11T03:06:20Z
+- response_status: mixed. SAM documentation verified; approved key-dependent probes against documented SAM Entity Management API paths returned empty 404 responses, so live public entity access and extract generation remain not verified. IRS EO BMF fallback verified live.
+- formats_and_sizes: SAM Entity Management API documentation says synchronous JSON is paged at 10 records per page with a 10,000-record synchronous cap, and asynchronous extract downloads are available via `format=json` or `format=csv` with a 1,000,000-record extract cap. Live extract URL generation was not verified because key-based probes returned empty 404 responses. IRS EO BMF is CSV, split by state/region; regional CSV probes returned live headers and sample rows.
 - fields_we_map: UEI, legacy DUNS, EIN/TIN, legal name, DBA/name aliases, physical/mailing address, NAICS, PSC, CAGE where available, tax-exempt organization classification fields, source-scoped alias confidence.
 - identifiers_present: SAM public tier carries UEI plus entity public profile fields; SAM sensitive tier can include SSN/TIN/EIN but is restricted. IRS EO BMF carries EIN, name, care-of-name, street, city, state, ZIP, exemption/classification/status fields.
 - grain: entity | registration | tax-exempt-organization profile | alias evidence
 - update_cadence: SAM API cadence not confirmed in this gate; IRS EO BMF guide says updated monthly on the 2nd Monday of the month.
 - posting_lag: IRS EO BMF page reported latest update 5/12/2026; direct CSV probes returned `last-modified` headers on 2026-06-08.
-- license_or_terms: IRS content created or maintained by federal employees in the course of duties is not subject to copyright and may be freely copied; Treasury/IRS symbols, seals, insignia, badges, and endorsement-implying uses remain restricted. SAM API documentation includes D&B attribution and anti-harvesting/commercial-marketing restrictions for D&B Open Data elements; exact downstream redistribution terms still need legal/product review.
+- license_or_terms: IRS content created or maintained by federal employees in the course of duties is not subject to copyright and may be freely copied; Treasury/IRS symbols, seals, insignia, badges, and endorsement-implying uses remain restricted. SAM terms include D&B attribution, no D&B Open Data bulk dissemination, no commercial/resale/marketing use of non-open D&B data, anti-harvesting restrictions, and FOUO/Sensitive public-dissemination limits.
 - known_gaps: No public official UEI-to-EIN bridge is currently verified. SAM sensitive tier is not a public bridge. Operator-supplied key probes did not verify live SAM public API access or extract download generation; a SAM.gov profile/system-account Public API Key, rather than a generic api.data.gov key, may be required. Name/address crosswalks are feasible fallback evidence, not authoritative joins.
 - notes: This gate is the identifier policy gate. The conclusion is intentionally conservative: exact identifiers first, source-scoped aliases second, no destructive entity merges from fuzzy evidence.
 
@@ -26,6 +26,7 @@ Completed:
 - Retrieved operator-supplied key from 1Password item `Data.gov API Key` using field `credential`, without printing the secret.
 - Ran key-dependent SAM Entity Management API probes against documented production and alpha paths for v1-v4, using both `X-Api-Key` header and `api_key` query parameter placements where appropriate.
 - Ran narrow UEI-scoped `format=json` and `format=csv` extract probes; no broad all-entity extract job was requested.
+- Re-ran the bounded public probe suite after the operator stated an api.data.gov key was available. `DATA_GOV_API_KEY` was not visible to the Hermes tool process; the operator approved reusing the existing 1Password item for the retry.
 - Extracted official IRS public-disclosure pages for Form 990 context in Gate 2.
 - Verified IRS EO BMF official page and guide.
 - Verified IRS EO BMF live CSV regional files with HTTP/sample reads.
@@ -48,6 +49,8 @@ Verified:
 - The same documented paths also returned HTTP 404 with empty bodies against `https://api-alpha.sam.gov` for v2-v4 sample-UEI probes.
 - Query-parameter and header key placement both produced the same empty 404 result; no `X-RateLimit-*` headers or api.data.gov-style JSON error codes were observed.
 - Narrow `format=json` and `format=csv` extract probes returned empty 404 responses, so live public extract download URL generation was not verified with this key.
+- The re-run probe suite produced the same result: 30 public GET probes, 30 HTTP 404 responses, empty bodies, `Content-Length: 0`, no `X-RateLimit-*` headers, no public response schema, and no extract download token or URL.
+- Official documentation, not live payload, supports the field conclusion: public data includes UEI, names, registration details, addresses, business types, PSC, NAICS, and points of contact name/address; Sensitive CUI is where SSN/TIN/EIN and banking fields are described.
 - IRS EO BMF is official, CSV, cumulative, and updated monthly on the 2nd Monday of the month.
 - IRS EO BMF CSV header includes `EIN`, `NAME`, `ICO`, `STREET`, `CITY`, `STATE`, `ZIP`, and many exemption/classification fields.
 - IRS EO BMF content-use rights are favorable for federal-employee-created/maintained site content, with Treasury/IRS mark restrictions.
@@ -59,6 +62,7 @@ Not verified:
 - Any public SAM bulk extract containing EIN/TIN.
 - Any live public SAM Entity Management API response using the operator-supplied key.
 - Any live SAM public extract download URL generated with the operator-supplied key.
+- Any observed SAM `X-RateLimit-*` headers from live probes.
 - Practical match rate between SAM public entity profiles and IRS EO BMF by normalized name/address.
 
 ### Report
@@ -177,6 +181,43 @@ Interpretation:
 - The pending-key work item is resolved as executed, not as successful API access.
 - The GSA documentation says SAM.gov users obtain a Public API Key from the SAM.gov workspace/profile account-details page. The tested item is named `Data.gov API Key`; if this is a generic api.data.gov key rather than a SAM.gov Public API Key, it may not authorize or route SAM Entity Management API requests.
 - The current Outlays data model should continue to treat SAM public entity data as desirable future UEI/name/address evidence, not as a verified live ingestion source.
+
+### P2 re-run with approved key source
+
+The operator later stated that an api.data.gov key was available as `DATA_GOV_API_KEY`. That environment variable was not visible to the Hermes tool process. The operator then approved reusing the existing 1Password item `Data.gov API Key` for the P2 retry.
+
+Probe timestamp: 2026-06-11T03:06:20Z.
+
+Bounded public GET probe suite:
+
+- 30 total probes.
+- 16 public entity-by-UEI probes across v1-v4, header and query-key auth, for the Gate 2 UEI and GSA documentation sample UEIs.
+- 6 minimal paged-API probes across v2-v4, header and query-key auth, using `samRegistered=Yes`, `registrationStatus=A`, `includeSections=entityRegistration,coreData`, and `limit=1`.
+- 8 narrow extract-generation probes across v3-v4, header and query-key auth, using the GSA documentation sample UEIs and `format=json` / `format=csv`.
+- No sensitive POST request.
+- No broad all-entity extract request.
+
+Observed live result:
+
+- 30 / 30 probes returned HTTP 404.
+- Response bodies were empty.
+- Observed response header evidence was limited to `Content-Length: 0`.
+- No `X-RateLimit-Limit`, `X-RateLimit-Remaining`, or `X-RateLimit-Reset` headers were observed.
+- No api.data.gov-style JSON error code was returned.
+- No public entity schema was returned.
+- No extract download token, download URL, CSV, JSON file, or ZIP was returned.
+
+Documentation-supported, not live-verified:
+
+- Paged API access: the GSA documentation says synchronous JSON returns 10 records per page and can return only the first 10,000 records.
+- Bulk/extract-style access: the same documentation says the API can serve as an Extract API with `format=csv` or `format=json`, asynchronous download links, and a 1,000,000-record extract cap.
+- Public fields: the documentation says Public Data includes name, UEI, registration details, physical and mailing addresses, business types, PSC, NAICS, and points of contact name/address.
+- EIN absence from public tier: the documentation places tax identifiers such as SSN/TIN/EIN in Sensitive CUI, not Public Data. No live public payload was returned to independently confirm field absence from a response schema.
+
+P2 verdict:
+
+- Public SAM entity API and extract availability remain documentation-supported but not live-verified with the approved key source.
+- The Outlays ingestion plan should not depend on SAM Entity Management as a live Phase 1 source until a SAM.gov Public API Key or system-account entitlement returns a schema, page, extract token, or downloadable artifact.
 
 ## IRS EO BMF fallback verification
 
@@ -343,7 +384,7 @@ Interpretation for Outlays:
 
 ## Recommended fallback: SAM public entity data ↔ IRS EO BMF crosswalk
 
-If SAM key-dependent probes confirm that public SAM data exposes UEI/name/address/NAICS/PSC but not EIN/TIN, the best nonprofit EIN fallback is a cautious name/address crosswalk between:
+Because SAM documentation says public SAM data exposes UEI/name/address/NAICS/PSC but key-dependent probes did not return a live schema, the best nonprofit EIN fallback remains a cautious name/address crosswalk between:
 
 1. SAM public entity profiles:
    - UEI,
