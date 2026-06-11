@@ -204,8 +204,49 @@ paths:
   /v1/leads:
     get:
       summary: Published leads only (never any other status)
+      description: >
+        A lead is facts plus statistical context, never an accusation. Only leads whose
+        latest append-only review event is 'published' (set by a human reviewer) appear
+        here; drafts are invisible. Each lead carries its rule citation (anchored in
+        docs/leads-methodology.md), limitations text, and fact links resolvable via
+        /v1/fact/{id}/provenance.
       parameters:
         - { name: status, in: query, required: false, schema: { type: string, enum: [published] } }
       responses:
-        '200': { description: "published leads (empty until S11)" }
+        '200':
+          description: published leads
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [status, leads]
+                properties:
+                  status: { type: string, enum: [published] }
+                  leads:
+                    type: array
+                    items:
+                      type: object
+                      required: [leadId, ruleId, title, summary, severity, citation,
+                                 limitations, factIds, generatedQuery, reviewer, publishedAt]
+                      properties:
+                        leadId: { type: string, format: uuid }
+                        ruleId: { type: string }
+                        title: { type: string }
+                        summary: { type: string }
+                        severity: { type: string, enum: [info, low, medium] }
+                        citation:
+                          type: array
+                          items: { type: string }
+                          description: first entry anchors into docs/leads-methodology.md
+                        limitations: { type: string }
+                        factIds:
+                          type: array
+                          items: { type: string, format: uuid }
+                        score:
+                          type: [string, 'null']
+                          description: rule-defined statistic (e.g. vendor share ratio), decimal string
+                        generatedQuery: { type: string }
+                        reviewer: { type: string }
+                        reviewNote: { type: [string, 'null'] }
+                        publishedAt: { type: string }
         '400': { description: a non-published status was requested }

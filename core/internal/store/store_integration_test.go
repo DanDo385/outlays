@@ -61,6 +61,7 @@ var dataTables = map[string]string{
 	"classification_assignment": "version",
 	"control_total":             "derivation_query",
 	"lead":                      "rule_id",
+	"lead_event":                "reviewer",
 	"parquet_export":            "facts_key",
 }
 
@@ -215,9 +216,18 @@ func seedWorkflowRows(t *testing.T, ctx context.Context, owner *pgxpool.Pool, ru
 		t.Fatalf("seed control_total: %v", err)
 	}
 	factID := store.FactID(factHash)
-	_, _ = owner.Exec(ctx, `
+	var leadID string
+	if err := owner.QueryRow(ctx, `
 		INSERT INTO lead (rule_id, fact_ids, generated_query, status)
-		VALUES ('seed-rule', ARRAY[$1::uuid], 'seed for trigger test', 'draft')`, factID)
+		VALUES ('seed-rule', ARRAY[$1::uuid], 'seed for trigger test', 'draft')
+		RETURNING lead_id::text`, factID).Scan(&leadID); err != nil {
+		t.Fatalf("seed lead: %v", err)
+	}
+	if _, err := owner.Exec(ctx, `
+		INSERT INTO lead_event (lead_id, status, reviewer, note)
+		VALUES ($1, 'reviewed', 'reviewer:seed', 'seed for trigger test')`, leadID); err != nil {
+		t.Fatalf("seed lead_event: %v", err)
+	}
 	if _, err := owner.Exec(ctx, `
 		INSERT INTO parquet_export (jurisdiction, fiscal_year,
 			facts_sha256, facts_key, facts_rows,

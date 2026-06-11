@@ -66,7 +66,7 @@ red. Tick a box only after its ACCEPT criteria are verified.
   - ACCEPT: a vendor aggregation returns identical totals from Postgres and DuckDB with no
     response-shape change.
 
-- [ ] **S11 — Leads scaffold (private).** Rules as versioned SQL with metadata (rule_id,
+- [x] **S11 — Leads scaffold (private).** Rules as versioned SQL with metadata (rule_id,
     citation, required fields); runner writes `draft`; review CLI (list, inspect, set status
     with reviewer handle). Exactly ONE rule end to end on CA (e.g. vendor concentration
     within a department-year), citing its basis.

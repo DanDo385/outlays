@@ -100,7 +100,13 @@ The goose migrations own the exact DDL text. The normative *shape*:
   **Coverage** = `sum(transaction+award grain facts) / official_total`. Public, honest, per
   jurisdiction-year. Low coverage is correct behavior early, not a bug.
 - `lead` — `rule_id`, `fact_ids UUID[]`, `score`, `generated_query`, `status` in
-  `draft | reviewed | published | dismissed`, `reviewer`, `review_note`.
+  `draft | reviewed | published | dismissed`, `reviewer`, `review_note`, `body JSONB` (the
+  generated lead document: title, summary, severity, citations, limitations, safe wording,
+  subject, params). The row is immutable; its `status` records only the initial machine
+  state (`draft`).
+- `lead_event` — append-only review actions: `lead_id`, `status`, mandatory `reviewer`
+  handle, `note`. A lead's current status is its latest event (else the row's initial
+  status); publication and retraction are both events, never updates (D30).
 - `parquet_export` — append-only registry of content-addressed Parquet snapshots of a
   `(jurisdiction, fiscal_year)` partition (facts, assignments, codes, entities), each named
   by the sha256 of its bytes; the newest row is the partition's current snapshot (D29).
@@ -358,6 +364,26 @@ Append-only. Each entry: decision, rationale, and (when superseded) a pointer fo
   returns an explicit 409, never a silent Postgres fallback — a stale answer dressed as the
   analytical path would be worse than an error. Engine equivalence is enforced in CI
   (vendor/payee, cofog, and both per-source scheme views compared byte-for-byte). (S10)
+- **D30 — Leads scaffold: versioned SQL rules anchored in the methodology library;
+  append-only review events.** Rules live as embedded SQL files with sidecar metadata
+  (`core/internal/leads/rules/`); loading validates that the first citation anchors a
+  specific entry of `docs/leads-methodology.md` (research deliverable A2), that severity is
+  never `high` for an automated rule, and that safe-wording and limitations texts exist. A
+  banned-wording guard mechanically rejects generated or published text asserting
+  wrongdoing or intent (Hard Rule 6). The first end-to-end rule is
+  `ca_vendor_concentration_department_category_v1`, implementing the library's
+  `L001 — vendor concentration inside buyer/year`
+  (`docs/leads-methodology.md#l001--vendor-concentration-inside-buyeryear`, citing DOJ
+  Red Flags of Collusion and IACRC red flags) with the library's suggested v1 thresholds
+  (share ≥ 0.50, ≥ 3 facts, group total ≥ $100k, ≥ 2 vendors); it computes shares, never
+  conclusions. Lead ids are deterministic over (rule id+version, subject, sorted evidence
+  fact set) so re-runs are no-ops and changed evidence yields a new reviewable draft.
+  Status changes resolve the D20 open question as a `lead_event` table: every transition
+  is an appended event with a mandatory reviewer handle; current status = latest event;
+  the public endpoint serves only leads whose latest event is `published`, so a later
+  `dismissed` event retracts append-only. The review CLI (`core/cmd/leads`: run / list /
+  inspect / set-status) is a private operator tool; publication additionally re-validates
+  citation anchoring, limitations, fact links, and neutral wording. (S11)
 - **D14 — Project renamed `fiscal-warehouse` → `outlays`.** The original name in the build
   prompt was "Fiscal Warehouse" (kebab `fiscal-warehouse`). The project is now **Outlays**:
   npm scope `@outlays/*`, Go module `github.com/djmagro/outlays/core`, User-Agent

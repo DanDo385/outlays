@@ -392,3 +392,53 @@ the bottom.
   00003 default privileges covered the new table automatically). Sizes for the replay
   slice: facts 151 KB / 989 rows, assignments 155 KB / 2,839 rows, codes 3.6 KB, entities
   24 KB.
+
+## post-S10 (CI repair)
+
+- **CI integration job had been red since before S9** on "manifest unknown":
+  `bitnami/minio:latest` vanished from Docker Hub (Bitnami catalog retirement). GH service
+  containers cannot pass the official image's `server /data` command, so MinIO now starts
+  via a `docker run -d` step using `minio/minio:latest` — the same image as the local
+  compose stack; tests already create their own bucket. With the fix, the full workflow is
+  green on `41a3c62`, including the first run of the S10 engine-equivalence and S9
+  classify integration tests (and the CGO DuckDB build) on CI.
+- **Runner deprecation warning observed:** GH Actions will force Node 24 for JS actions
+  from 2026-06-16; checkout@v4 / setup-node@v4 / setup-go@v5 / pnpm-action@v4 emit
+  warnings. Non-blocking; bump action versions in a future housekeeping pass.
+
+## S11
+
+- **Methodology library is the contract for rules.** Rule files live embedded at
+  `core/internal/leads/rules/<ruleId>.{sql,json}`; `LoadRule` refuses any rule whose first
+  citation does not anchor a specific `docs/leads-methodology.md` entry, whose severity is
+  `high` (no automated lead may be high, per the library's severity policy), or which
+  lacks safe-wording/limitations/required-fields texts. The one S11 rule implements
+  **L001** exactly as recommended ("First S11 rule recommendation"), with the library's
+  rule id `ca_vendor_concentration_department_category_v1` and suggested v1 thresholds.
+  The library's window-function SQL sketch was implemented with plain CTEs instead
+  (per its own implementation note about `COUNT(DISTINCT)` window support).
+- **Append-only status workflow (D20 resolved):** the lead row is immutable — `status`
+  holds only the machine's initial `draft`. Human actions append `lead_event` rows
+  (mandatory reviewer handle; `draft` is not a settable status). Current status = latest
+  event; `/v1/leads` filters on it, so publishing and retraction are both events.
+  Dismiss-after-publish demonstrably removes the lead from the public endpoint while
+  preserving full history (asserted in the integration test).
+- **Wording discipline is mechanical, not aspirational:** a word-boundary banned-term
+  guard (fraud/corruption/collusion/bid-rigging/kickback/bribery/evade/intent...) runs at
+  generation AND again at publication; "irrigation"/"corrugated" do not trip it. The
+  generated summary is numbers plus the library's safe wording; share percentages are
+  rendered by string math (no float formatting anywhere near the statistic).
+- **Deterministic lead identity** = uuidv5 over (rule id + version, jurisdiction, year,
+  subject, sorted evidence fact ids): re-running a rule over unchanged data inserts 0;
+  changed evidence yields a NEW draft for review rather than mutating the old one.
+- **Replay-slice results (L001 @ v1 thresholds):** exactly 2 drafts —
+  MCKESSON MEDICAL - SURGICAL at 85.58% of NON-IT Goods / Correctional Health Care
+  Services ($808,324.81 of $944,525.74, 8 facts, 34 vendors in group) and ADVANCED
+  TECHNICAL SOLUTIONS at 54.72% of IT Goods / Consumer Affairs. The McKesson case is a
+  textbook instance of the library's own limitation (specialized medical supply can be
+  legitimately concentrated) — which is why the limitations text ships inside the lead
+  body and the public payload.
+- **`/v1/leads` response shape now real** (was stubbed): title/summary/severity/citation/
+  limitations/factIds/score/reviewer/publishedAt, documented in `docs/openapi.yaml`. A
+  contract `Lead` type can follow in a future contract rev if the web UI grows a leads
+  surface (D26 applies then).

@@ -1,0 +1,30 @@
+{
+  "ruleId": "ca_vendor_concentration_department_category_v1",
+  "ruleVersion": 1,
+  "methodId": "L001",
+  "title": "Vendor concentration inside a department / acquisition-type / year",
+  "citation": [
+    "docs/leads-methodology.md#l001--vendor-concentration-inside-buyeryear",
+    "https://www.justice.gov/atr/red-flags-collusion",
+    "https://iacrc.org/fraud-and-corruption/the-most-common-procurement-fraud-schemes-and-their-primary-red-flags"
+  ],
+  "severity": "low",
+  "requiredFields": [
+    "fiscal_fact.amount",
+    "fiscal_fact.fiscal_year",
+    "fiscal_fact.payee_entity",
+    "classification_assignment (us_ca_department)",
+    "classification_assignment (us_ca_acquisition_type)",
+    "fiscal_fact.raw_sha256 + derivation_query (provenance)"
+  ],
+  "params": {
+    "buyerDimension": "us_ca_department",
+    "sourceCategory": "us_ca_acquisition_type",
+    "shareThreshold": "0.50",
+    "minFactCount": 3,
+    "minGroupTotal": "100000",
+    "minGroupVendors": 2
+  },
+  "safePublicWording": "One vendor accounts for a high share of this department/category/year in the records loaded by Outlays.",
+  "limitations": "High concentration can be normal for specialized goods, emergencies, statewide contracts, framework agreements, utilities, or sole-source markets."
+}

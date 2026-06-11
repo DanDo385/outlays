@@ -413,21 +413,50 @@ func Compare(ctx context.Context, pool *pgxpool.Pool, scheme, code string, juris
 	return out, rows.Err()
 }
 
-// Lead is a published lead (the only status ever exposed publicly).
+// Lead is a published lead (the only status ever exposed publicly): facts plus
+// statistical context, with the rule's citation, limitations, and the publishing
+// reviewer's handle (Hard Rule 6, methodology publication policy).
 type Lead struct {
 	LeadID         string   `json:"leadId"`
 	RuleID         string   `json:"ruleId"`
+	Title          string   `json:"title"`
+	Summary        string   `json:"summary"`
+	Severity       string   `json:"severity"`
+	Citation       []string `json:"citation"`
+	Limitations    string   `json:"limitations"`
 	FactIDs        []string `json:"factIds"`
 	Score          *string  `json:"score"`
 	GeneratedQuery string   `json:"generatedQuery"`
+	Reviewer       string   `json:"reviewer"`
 	ReviewNote     *string  `json:"reviewNote"`
+	PublishedAt    string   `json:"publishedAt"`
 }
 
-// PublishedLeads returns only leads with status='published' (Hard Rule 6).
+// PublishedLeads returns only leads whose latest review event is 'published' (Hard Rule
+// 6). The lead row itself is immutable ('draft'); status lives in append-only lead_event
+// rows, so a later event (e.g. dismissed) silently retracts a publication.
 func PublishedLeads(ctx context.Context, pool *pgxpool.Pool) ([]Lead, error) {
 	rows, err := pool.Query(ctx, `
-		SELECT lead_id::text, rule_id, fact_ids::text[], score::text, generated_query, review_note
-		FROM lead WHERE status='published' ORDER BY inserted_at DESC`)
+		WITH cur AS (
+			SELECT l.lead_id, ev.status, ev.reviewer, ev.note, ev.created_at
+			FROM lead l
+			JOIN LATERAL (
+				SELECT e.status, e.reviewer, e.note, e.created_at
+				FROM lead_event e WHERE e.lead_id = l.lead_id
+				ORDER BY e.created_at DESC, e.event_id DESC LIMIT 1
+			) ev ON true
+		)
+		SELECT l.lead_id::text, l.rule_id,
+		       COALESCE(l.body->>'leadTitle', ''),
+		       COALESCE(l.body->>'leadSummary', ''),
+		       COALESCE(l.body->>'severity', ''),
+		       COALESCE(ARRAY(SELECT jsonb_array_elements_text(l.body->'basisCitation')), '{}'),
+		       COALESCE(l.body->>'methodLimitations', ''),
+		       l.fact_ids::text[], l.score::text, l.generated_query,
+		       cur.reviewer, cur.note, cur.created_at::text
+		FROM lead l JOIN cur ON cur.lead_id = l.lead_id
+		WHERE cur.status = 'published'
+		ORDER BY cur.created_at DESC, l.lead_id`)
 	if err != nil {
 		return nil, err
 	}
@@ -435,7 +464,9 @@ func PublishedLeads(ctx context.Context, pool *pgxpool.Pool) ([]Lead, error) {
 	out := []Lead{}
 	for rows.Next() {
 		var l Lead
-		if err := rows.Scan(&l.LeadID, &l.RuleID, &l.FactIDs, &l.Score, &l.GeneratedQuery, &l.ReviewNote); err != nil {
+		if err := rows.Scan(&l.LeadID, &l.RuleID, &l.Title, &l.Summary, &l.Severity, &l.Citation,
+			&l.Limitations, &l.FactIDs, &l.Score, &l.GeneratedQuery, &l.Reviewer, &l.ReviewNote,
+			&l.PublishedAt); err != nil {
 			return nil, err
 		}
 		out = append(out, l)
