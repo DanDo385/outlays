@@ -12,7 +12,7 @@
 - update_cadence: Monthly archive index observed for award data; generated downloads are request/job based; full database snapshots are published as dated ZIPs. Exact official cadence text not yet confirmed.
 - posting_lag: Not yet confirmed from official terms/docs in this run.
 - license_or_terms: Explicit license/terms not yet confirmed. Attempts to retrieve obvious USAspending terms/about surfaces did not expose usable license text in fetched HTML. Treat as an open Gate 1 gap and verify before redistribution claims.
-- known_gaps: Full column-by-column dictionary match not yet confirmed; full FY subaward ZIP size not HEAD-verified; full-year all-agency account download row counts not verified; award_financial and account_balances account downloads not yet live-probed; license/terms not confirmed.
+- known_gaps: Full FY subaward ZIP size not HEAD-verified; full-year all-agency account download row counts not verified; award_financial and account_balances account downloads not yet live-probed; license/terms not confirmed.
 - notes: This note records only Gate 1 USAspending bulk-source findings. Do not begin Gate 2 until this file exists and its open gaps are accepted or assigned.
 
 ## EVR status
@@ -43,7 +43,6 @@ Verified:
 - Approximate FY2024 row counts from the count API for contracts, assistance, and subawards.
 
 Not yet verified:
-- Full column-by-column dictionary match against the official code/data dictionary.
 - Explicit license/terms suitable for redistribution/commercial-use conclusions.
 - Full FY generated subaward download size.
 - Full FY all-agency account download row counts and sizes.
@@ -408,14 +407,32 @@ Official public source/docs located during the prior probe:
 
 Verified:
 - The inspected live contract archive header had 297 columns.
-- A source-code candidate extraction also found 297 factory columns.
+- A clean AST parse of the pinned USAspending generation source found 297 output columns from `ContractMixin.select_cols`.
+- Exact ordered column parity is confirmed between the pinned source parser output and the live FY2024 Access Board header-only archive: 297 expected columns, 297 live header columns, 0 missing, 0 extra, 0 order mismatches.
 - Key fields listed above were observed in the live header.
 
-Not yet confirmed:
-- Perfect column-by-column dictionary match. A quick regex extraction produced mismatch artifacts around multiline COVID field aliases, so this report must not claim exact dictionary parity.
+Parity evidence:
+- Live archive: `https://files.usaspending.gov/award_data_archive/FY2024_310_Contracts_Full_20260506.zip`
+- HEAD/GET verified size: 2,540 bytes
+- ZIP SHA-256: `666f06abf07c16e7e4205e5c217198ffc4b3b205fe91bba05eed1873ceb580b0`
+- ZIP member: `FY2024_310_Contracts_Full_20260508_1.csv`
+- Live header count: 297 columns
+- Pinned source repository: `fedspendingtransparency/usaspending-api`
+- Pinned source ref: `2a0cb61881a2a38e304864383cd5f0e20c3cd30a`
+- Pinned source commit date: 2026-04-17T00:15:56Z
+- Ref selection rationale: nearest commit touching `usaspending_api/download/delta_downloads/transaction_contract_monthly.py` before the 2026-05-06 archive date.
+- Pinned source path: `usaspending_api/download/delta_downloads/transaction_contract_monthly.py`
+- Parsed class/property: `ContractMixin.select_cols`
+- Parser method: Python AST, using alias string from `.alias("...")` when present and source string from `self.sf.col("...")` otherwise.
+- Source text SHA-256 from the pinned raw file: `51c9edbcbb4c2448bc9892f3079c5eccf83881b757764abf87caa23ab7bbcb6a`
+- COVID/IIJA alias fields matched exactly, including multiline source-code alias cases:
+  - `outlayed_amount_from_COVID-19_supplementals_for_overall_award`
+  - `obligated_amount_from_COVID-19_supplementals_for_overall_award`
+  - `outlayed_amount_from_IIJA_supplemental_for_overall_award`
+  - `obligated_amount_from_IIJA_supplemental_for_overall_award`
 
-Required next dictionary step:
-- Run a clean parser against the official generation code or published dictionary and compare exact ordered field names against a live populated or header-only FY2024 archive.
+Conclusion:
+- The earlier regex mismatch was a parser artifact, not a live dictionary mismatch. For FY2024 contract monthly archives, ordered column parity between the pinned USAspending generation code and the inspected live archive header is confirmed.
 
 ## Broken, odd, or negative findings
 
@@ -438,7 +455,6 @@ Gate 1 is report-complete with explicit open verification gaps.
 
 Do not start Gate 2 until the operator accepts this Gate 1 note or assigns the open verification gaps:
 - license/terms confirmation,
-- exact dictionary parity,
 - full FY subaward ZIP HEAD/status,
 - full FY all-agency account download counts/sizes,
 - `award_financial` probe,
