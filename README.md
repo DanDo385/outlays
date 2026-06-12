@@ -23,11 +23,21 @@ data/cofog/  docs/sources/                              research inputs
 ## Quick start (local dev)
 
 ```sh
+make up          # .env, Postgres + MinIO, migrations, build
+make seed        # optional: offline CA replay ingest + classify
+make run-api     # http://localhost:8080
+```
+
+Manual equivalent:
+
+```sh
 cp .env.example .env
 docker compose -f deploy/docker-compose.yml up -d   # Postgres + MinIO
 pnpm install && pnpm -r build                        # TypeScript workspace
 ( cd core && go build ./... )                        # Go core
 ( cd contracts && forge build )                      # Solidity
 ```
+
+Run `make help` for all targets.
 
 Apache-2.0 licensed.
