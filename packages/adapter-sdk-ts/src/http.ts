@@ -100,6 +100,79 @@ async function record(dir: string, url: string, headers: Record<string, string>)
   return res;
 }
 
+/** POST `url` with JSON body, honoring replay / record / live (same modes as httpGet). */
+export async function httpPost(
+  url: string,
+  body: string,
+  headers: Record<string, string> = {},
+): Promise<HttpResponse> {
+  const replayDir = process.env["OUTLAYS_REPLAY_DIR"];
+  const key = postKey(url, body);
+  if (replayDir) return replay(replayDir, key);
+  const recordDir = process.env["OUTLAYS_RECORD_DIR"];
+  if (recordDir) return recordPost(recordDir, url, body, headers);
+  return livePost(url, body, headers);
+}
+
+function postKey(url: string, body: string): string {
+  return `${url}#POST#${sha256Hex(body)}`;
+}
+
+async function livePost(url: string, body: string, headers: Record<string, string>): Promise<HttpResponse> {
+  const host = new URL(url).host;
+  const maxAttempts = 6;
+  let lastErr: unknown;
+  for (let attempt = 0; attempt < maxAttempts; attempt++) {
+    await rateLimit(host);
+    try {
+      const res = await fetch(url, {
+        method: "POST",
+        headers: {
+          "content-type": "application/json",
+          "user-agent": userAgent(),
+          ...headers,
+        },
+        body,
+      });
+      if (res.status === 429 || res.status >= 500) {
+        const retryAfter = Number(res.headers.get("retry-after"));
+        const backoff = Number.isFinite(retryAfter) && retryAfter > 0
+          ? retryAfter * 1000
+          : Math.min(30000, 500 * 2 ** attempt) + Math.random() * 250;
+        await sleep(backoff);
+        continue;
+      }
+      const buf = new Uint8Array(await res.arrayBuffer());
+      const hdrs: Record<string, string> = {};
+      res.headers.forEach((v, k) => {
+        hdrs[k] = v;
+      });
+      return { url, bytes: buf, httpStatus: res.status, headers: hdrs };
+    } catch (err) {
+      lastErr = err;
+      await sleep(Math.min(30000, 500 * 2 ** attempt) + Math.random() * 250);
+    }
+  }
+  throw new Error(`POST failed after ${maxAttempts} attempts: ${url} (${String(lastErr)})`);
+}
+
+async function recordPost(
+  dir: string,
+  url: string,
+  body: string,
+  headers: Record<string, string>,
+): Promise<HttpResponse> {
+  const res = await livePost(url, body, headers);
+  await mkdir(dir, { recursive: true });
+  const key = postKey(url, body);
+  const file = `${sha256Hex(key).slice(0, 16)}.bin`;
+  await writeFile(join(dir, file), res.bytes);
+  const index = await loadIndex(dir);
+  index.entries[key] = { file, status: res.httpStatus };
+  await writeFile(join(dir, "index.json"), JSON.stringify(index, null, 2) + "\n");
+  return res;
+}
+
 /** GET `url`, honoring the active mode (replay / record / live). */
 export async function httpGet(url: string, headers: Record<string, string> = {}): Promise<HttpResponse> {
   const replayDir = process.env["OUTLAYS_REPLAY_DIR"];

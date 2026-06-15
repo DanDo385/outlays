@@ -360,7 +360,8 @@ func CoverageFor(ctx context.Context, pool *pgxpool.Pool, jur, year string) (*Co
 		       rs.storage_key, rs.url
 		FROM control_total ct
 		LEFT JOIN raw_snapshot rs ON rs.sha256 = ct.raw_sha256
-		WHERE ct.jurisdiction=$1 AND ct.fiscal_year=$2 AND ct.flow='spending'`, jur, year,
+		WHERE ct.jurisdiction=$1 AND ct.fiscal_year=$2 AND ct.flow='spending'
+		  AND ct.derivation_query NOT LIKE 'seed %'`, jur, year,
 	).Scan(&denom, &scope, &ctDerivation, &rawSha, &storageKey, &snapshotURL)
 	if err == pgx.ErrNoRows {
 		return c, nil
@@ -481,7 +482,10 @@ func Jurisdictions(ctx context.Context, pool *pgxpool.Pool) ([]string, error) {
 
 // Years lists distinct fiscal years for a jurisdiction, descending.
 func Years(ctx context.Context, pool *pgxpool.Pool, jur string) ([]string, error) {
-	return scanStrings(ctx, pool, `SELECT DISTINCT fiscal_year FROM fiscal_fact WHERE jurisdiction=$1 ORDER BY 1 DESC`, jur)
+	return scanStrings(ctx, pool, `
+		SELECT DISTINCT fiscal_year FROM fiscal_fact
+		WHERE jurisdiction=$1
+		ORDER BY substring(fiscal_year from 1 for 4)::int DESC`, jur)
 }
 
 func scanStrings(ctx context.Context, pool *pgxpool.Pool, q string, args ...any) ([]string, error) {

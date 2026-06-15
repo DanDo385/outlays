@@ -8,7 +8,7 @@ import {
   getView,
   type EntityFlows,
 } from "@/lib/api";
-import { dimensionByKey, jurisdictionName, DIMENSIONS } from "@/lib/dimensions";
+import { dimensionByKey, dimensionsFor, jurisdictionName } from "@/lib/dimensions";
 import { formatMoney } from "@/lib/decimal";
 import { FactTable } from "@/components/FactTable";
 
@@ -30,8 +30,8 @@ export default async function DrillPage({
   const year = decodeURIComponent(p.year);
   const code = decodeURIComponent(p.code);
   if (!FISCAL_YEAR_RE.test(year)) notFound();
-  if (!DIMENSIONS.some((d) => d.key === p.dim)) notFound();
-  const dim = dimensionByKey(p.dim);
+  if (!dimensionsFor(jur).some((d) => d.key === p.dim)) notFound();
+  const dim = dimensionByKey(jur, p.dim);
 
   const sp = await searchParams;
   const flow = sp.flow === "revenue" ? "revenue" : "spending";
@@ -80,7 +80,7 @@ export default async function DrillPage({
       </div>
       <p className="drill-sub">
         {node.factCount} {flow} fact{node.factCount === 1 ? "" : "s"} at award grain (one
-        per purchase-order line). Click a row for its provenance — the hashes and query
+        per purchase-order line). Click a row for its provenance: the hashes and query
         that tie the figure to the raw source bytes.
       </p>
 

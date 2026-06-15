@@ -10,8 +10,9 @@ export const metadata: Metadata = {
 
 export default function RootLayout({ children }: { children: React.ReactNode }) {
   return (
-    <html lang="en">
-      <body>
+    // Extensions (e.g. SwiftRead) mutate <html>/<body> before hydration; suppress the noise.
+    <html lang="en" suppressHydrationWarning>
+      <body suppressHydrationWarning>
         <header className="site-header">
           <Link href="/" className="brand">
             Outlays

@@ -35,7 +35,9 @@ export type SchemeId =
   | "recipient_type"
   | "tag"
   | "us_ca_department"
-  | "us_ca_acquisition_type";
+  | "us_ca_acquisition_type"
+  | "us_fed_awarding_agency"
+  | "us_fed_award_type";
 
 export interface OutlaysContract {
   Money?: Money;

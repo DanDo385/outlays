@@ -1,5 +1,5 @@
 import type { Coverage } from "@/lib/api";
-import { formatMoney, percentFromRatio } from "@/lib/decimal";
+import { formatMoney, percentFromRatio, ratioExceedsOne } from "@/lib/decimal";
 
 /**
  * Coverage = ingested transaction+award facts / official control total. With no control
@@ -20,12 +20,23 @@ export function CoverageBadge({ coverage }: { coverage: Coverage }) {
     );
   }
   const basis = coverage.denominatorBasis;
+  const pct = percentFromRatio(coverage.ratio);
+  if (ratioExceedsOne(coverage.ratio)) {
+    return (
+      <span
+        className="badge badge-coverage-warn"
+        title={`${formatMoney(coverage.numerator, coverage.currency)} ingested facts exceed the official total of ${formatMoney(coverage.denominator, coverage.currency)} (${pct}). Scope: ${basis.scope}. Denominator: ${basis.derivationQuery}`}
+      >
+        facts exceed official total ({pct}) — {basis.scope}
+      </span>
+    );
+  }
   return (
     <span
       className="badge badge-coverage-known"
       title={`${formatMoney(coverage.numerator, coverage.currency)} ingested facts of ${formatMoney(coverage.denominator, coverage.currency)} official total. Denominator: ${basis.derivationQuery}`}
     >
-      coverage {percentFromRatio(coverage.ratio)} — {basis.scope}
+      coverage {pct} — {basis.scope}
     </span>
   );
 }

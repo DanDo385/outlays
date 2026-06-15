@@ -344,6 +344,8 @@ const SchemeIdRecipientType SchemeId = "recipient_type"
 const SchemeIdTag SchemeId = "tag"
 const SchemeIdUsCaAcquisitionType SchemeId = "us_ca_acquisition_type"
 const SchemeIdUsCaDepartment SchemeId = "us_ca_department"
+const SchemeIdUsFedAwardType SchemeId = "us_fed_award_type"
+const SchemeIdUsFedAwardingAgency SchemeId = "us_fed_awarding_agency"
 
 // Lowercase hex SHA-256 digest.
 type Sha256 string

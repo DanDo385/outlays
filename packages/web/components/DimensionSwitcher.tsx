@@ -1,7 +1,6 @@
 import Link from "next/link";
-import { DIMENSIONS } from "@/lib/dimensions";
+import { dimensionsFor } from "@/lib/dimensions";
 
-/** Tabs that re-pivot the same facts over a different scheme via the view endpoint (D1). */
 export function DimensionSwitcher({
   jur,
   year,
@@ -13,7 +12,7 @@ export function DimensionSwitcher({
 }) {
   return (
     <nav className="dim-switcher" aria-label="Pivot dimension">
-      {DIMENSIONS.map((d) => (
+      {dimensionsFor(jur).map((d) => (
         <Link
           key={d.key}
           href={`/${jur}/${year}?dim=${d.key}`}

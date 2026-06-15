@@ -1,0 +1,12 @@
+{
+  "entries": {
+    "https://api.usaspending.gov/api/v2/search/spending_by_award/#POST#c358582c724e1b0adf268b364d0b17af364521a3a1ba63031783a7a33426d060": {
+      "file": "52971c48e008f1fd.bin",
+      "status": 200
+    },
+    "https://api.usaspending.gov/api/v2/search/spending_by_award/#POST#84fce060a04d3358e68cda4f2fb29d74747df3b31d2e0fe719dcdb67678b2278": {
+      "file": "29047bfa48e8a275.bin",
+      "status": 200
+    }
+  }
+}

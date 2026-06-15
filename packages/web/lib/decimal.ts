@@ -70,15 +70,27 @@ export function sharePercent(part: string, total: string): number {
   return Math.max(0, Math.min(100, pct));
 }
 
-/** Render an API ratio string (e.g. "0.123456") as a percentage string without floats. */
+/** Render an API ratio string (e.g. "0.000247") as a percentage without floats. */
 export function percentFromRatio(ratio: string): string {
   if (!/^\d+(\.\d+)?$/.test(ratio)) return ratio;
   const dot = ratio.indexOf(".");
   const intPart = dot === -1 ? ratio : ratio.slice(0, dot);
-  const frac = (dot === -1 ? "" : ratio.slice(dot + 1)).padEnd(4, "0");
-  // Shift the decimal point two places right: ratio -> percent. `shifted` always contains
-  // a dot (frac is padded to 4 digits), so trimming trailing zeros then the dot is safe.
-  const shifted = `${intPart}${frac.slice(0, 2)}.${frac.slice(2)}`;
-  const trimmed = shifted.replace(/^0+(?=\d)/, "").replace(/0+$/, "").replace(/\.$/, "");
+  const frac = (dot === -1 ? "" : ratio.slice(dot + 1)).padEnd(6, "0").slice(0, 6);
+  const ratioMicro = BigInt(intPart) * 1000000n + BigInt(frac);
+  const pctMicro = ratioMicro * 100n;
+  const whole = pctMicro / 1000000n;
+  const frac6 = (pctMicro % 1000000n).toString().padStart(6, "0");
+  const trimmed = `${whole}.${frac6}`.replace(/0+$/, "").replace(/\.$/, "");
   return `${trimmed}%`;
+}
+
+/** True when ratio > 1.0 (ingested facts exceed the official control total). */
+export function ratioExceedsOne(ratio: string): boolean {
+  if (!/^\d+(\.\d+)?$/.test(ratio)) return false;
+  const dot = ratio.indexOf(".");
+  const intPart = dot === -1 ? ratio : ratio.slice(0, dot);
+  if (BigInt(intPart) > 1n) return true;
+  if (BigInt(intPart) < 1n) return false;
+  const frac = (dot === -1 ? "" : ratio.slice(dot + 1)).replace(/0+$/, "");
+  return frac.length > 0;
 }

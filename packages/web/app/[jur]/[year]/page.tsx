@@ -22,7 +22,7 @@ export default async function LedgerPage({
   const jur = decodeURIComponent(rawJur);
   const year = decodeURIComponent(rawYear);
   if (!FISCAL_YEAR_RE.test(year)) notFound();
-  const dim = dimensionByKey((await searchParams).dim);
+  const dim = dimensionByKey(jur, (await searchParams).dim);
 
   let spending, revenue, coverage, years;
   try {

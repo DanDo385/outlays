@@ -123,6 +123,11 @@ a:hover {
   color: var(--in);
   border: 1px solid var(--in);
 }
+.badge-coverage-warn {
+  background: var(--illustrative-soft);
+  color: var(--illustrative);
+  border: 1px solid var(--illustrative);
+}
 .badge-illustrative {
   background: var(--illustrative-soft);
   color: var(--illustrative);

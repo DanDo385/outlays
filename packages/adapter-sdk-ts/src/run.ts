@@ -7,7 +7,7 @@ import { writeFile } from "node:fs/promises";
 import { validate, type FiscalFact, type Entity, type EntityAlias, type ControlTotal } from "@outlays/contract";
 import { ExitCode, SourceUnavailableError } from "./errors.js";
 import { computeFactHash, computeResultHash } from "./hash.js";
-import { httpGet, type HttpResponse } from "./http.js";
+import { httpGet, httpPost, type HttpResponse } from "./http.js";
 import { writeSnapshot, type RawSnapshotRef, type SnapshotInput } from "./snapshot.js";
 
 export interface AdapterManifest {
@@ -29,10 +29,10 @@ export interface FetchContext {
   /** Capture raw bytes as a content-addressed snapshot; tracked for the envelope. */
   snapshot(input: SnapshotInput): Promise<RawSnapshotRef>;
   /**
-   * GET a URL (honoring replay/record/live mode) and capture the exact response bytes as a
-   * snapshot in one step. Returns the response so the adapter can parse `bytes`.
+   * Fetch a URL and capture the exact response bytes as a snapshot. Pass `body` for POST
+   * (replay key includes the body hash).
    */
-  fetch(url: string, headers?: Record<string, string>): Promise<HttpResponse>;
+  fetch(url: string, options?: { headers?: Record<string, string>; body?: string }): Promise<HttpResponse>;
   /** Structured log line to stderr (NDJSON). */
   log(level: "debug" | "info" | "warn" | "error", msg: string): void;
 }
@@ -98,8 +98,10 @@ async function runFetch(def: AdapterDefinition, flags: Record<string, string>): 
       snapshots.push(ref);
       return ref;
     },
-    async fetch(url, headers) {
-      const res = await httpGet(url, headers);
+    async fetch(url, options) {
+      const res = options?.body
+        ? await httpPost(url, options.body, options.headers)
+        : await httpGet(url, options?.headers);
       await this.snapshot({ url, bytes: res.bytes, httpStatus: res.httpStatus, headers: res.headers });
       return res;
     },

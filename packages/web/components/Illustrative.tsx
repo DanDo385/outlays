@@ -2,7 +2,7 @@
 export function Illustrative({ note }: { note?: string }) {
   return (
     <span className="badge badge-illustrative" title={note ?? "Not live-ingested data."}>
-      illustrative — not live data
+      illustrative: not live data
     </span>
   );
 }

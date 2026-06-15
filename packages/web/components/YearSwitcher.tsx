@@ -1,6 +1,7 @@
 "use client";
 
 import { useRouter } from "next/navigation";
+import { sortFiscalYearsDesc } from "@/lib/fiscalYear";
 
 export function YearSwitcher({
   jur,
@@ -14,6 +15,7 @@ export function YearSwitcher({
   dim: string;
 }) {
   const router = useRouter();
+  const ordered = sortFiscalYearsDesc(years);
   return (
     <label className="year-switcher">
       Fiscal year
@@ -21,7 +23,7 @@ export function YearSwitcher({
         value={year}
         onChange={(e) => router.push(`/${jur}/${e.target.value}?dim=${dim}`)}
       >
-        {years.map((y) => (
+        {ordered.map((y) => (
           <option key={y} value={y}>
             {y}
           </option>

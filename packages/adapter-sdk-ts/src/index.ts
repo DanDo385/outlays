@@ -6,7 +6,7 @@
 export { ExitCode, SourceUnavailableError } from "./errors.js";
 export { sha256Hex, jcs, jcsSha256, computeFactHash, computeResultHash, VOLATILE_FACT_FIELDS } from "./hash.js";
 export { writeSnapshot, type SnapshotInput, type RawSnapshotRef } from "./snapshot.js";
-export { httpGet, type HttpResponse } from "./http.js";
+export { httpGet, httpPost, type HttpResponse } from "./http.js";
 export { uuidv5 } from "./id.js";
 export {
   runAdapter,
